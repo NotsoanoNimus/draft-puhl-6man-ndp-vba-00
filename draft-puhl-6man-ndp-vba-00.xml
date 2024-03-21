@@ -29,7 +29,7 @@
   xml:lang="en"
   version="3">
   <front>
-    <title abbrev="ndp-vba">IPv6 Voucher-Based Addressing</title>
+    <title abbrev="ndp-vba">IPv6 Voucher-Based Address Generation &amp; verification</title>
     <seriesInfo name="Internet-Draft" value="draft-puhl-6man-ndp-vba-00"/>
     <author fullname="Zachary Tyler Puhl" initials="Z. T." surname="Puhl">
       <organization>University of Michigan</organization>
@@ -75,8 +75,8 @@
         This document introduces Voucher-Based Addressing (VBA) in IPv6 networks as an optional functionality for Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/>.
       </t>
       
-      <section>
-        <name>Requirements Language</name>
+      <section anchor="intro-requirements">
+        <name>Specification of Requirements</name>
         <t>
           The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
           "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
@@ -84,6 +84,13 @@
           interpreted as described in BCP 14 <xref target="RFC2119"/>
           <xref target="RFC8174"/> when, and only when, they appear in
           all capitals, as shown here.
+        </t>
+      </section>
+
+      <section anchor="intro-mod-summary">
+        <name>Summary of NDP Modifications &amp; Requirements</name>
+        <!-- special note in intro: this is LOW IMPACT!!! Only Vouchers & interface enablement (following behav. changes) are required for VBAs to work at the node level! -->
+        <t>
         </t>
       </section>
     </section>
@@ -99,6 +106,12 @@
       <t>
       </t>
 
+      <section anchor="summary-binding">
+        <name>Link-Layer Bindings &amp; Controversies</name>
+        <t>
+        </t>
+      </section>
+
       <section anchor="summary-generate">
         <name>Address Generation</name>
         <t>
@@ -106,27 +119,51 @@
       </section>
 
       <section anchor="summary-verify">
-        <name>Address verification</name>
-        <t>
-        </t>
-      </section>
-    </section>
-
-    <section anchor="behavioral">
-      <name>Behavioral Neighbor Discovery Changes</name>
-      <t>
-      </t>
-
-      <section anchor="behavioral-cache">
-        <name>Guarding the ND Cache</name>
+        <name>Address Verification</name>
         <t>
         </t>
       </section>
 
-      <section anchor="behavioral-nud">
-        <name>Neighbor Unreachability Detection</name>
+      <section anchor="summary-interfaces">
+        <name>Interface-level Configurations</name>
         <t>
         </t>
+
+        <section anchor="summary-interfaces-state">
+          <name>Preserving Voucher-Related State</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="summary-interfaces-state">
+          <name>Preserving Voucher-Related State</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="summary-interfaces-mode">
+          <name>Enforcement Modes</name>
+          <t>
+          </t>
+
+          <section anchor="summary-interfaces-ago">
+            <name>Address Generation Only (AGO)</name>
+            <t>
+            </t>
+          </section>
+
+          <section anchor="summary-interfaces-agv">
+            <name>Address Generation &amp; Verification (AGV)</name>
+            <t>
+            </t>
+          </section>
+
+          <section anchor="summary-interfaces-agvl">
+            <name>Address Generation &amp; Verification with Levels (AGVL)</name>
+            <t>
+            </t>
+          </section>
+        </section>
       </section>
     </section>
 
@@ -151,6 +188,18 @@
           <t>
           </t>
         </section>
+
+        <section anchor="addenda-voucher-publickey">
+          <name>Voucher Signatures &amp; Neighbor Trust</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="addenda-voucher-expirations">
+          <name>Voucher Expirations</name>
+          <t>
+          </t>
+        </section>
       </section>
 
       <section anchor="addenda-voucher-summary">
@@ -169,6 +218,61 @@
           <t>
           </t>
         </section>
+      </section>
+    </section>
+
+    <section anchor="behavioral">
+      <name>Behavioral Neighbor Discovery Changes</name>
+      <t>
+      </t>
+
+      <section anchor="behavioral-send">
+        <name>Changes Adopted from Secure Neighbor Discovery</name>
+        <t>
+        </t>
+
+        <section anchor="behavioral-send-nonce">
+          <name>Nonce Option</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="behavioral-send-levels">
+          <!-- See Section 8 of RFC 3971. -->
+          <name>Secured &amp; Unsecured Messages</name>
+          <t>
+          </t>
+        </sections>
+      </section>
+
+      <section anchor="behavioral-cache">
+        <name>Guarding the ND Cache</name>
+        <t>
+        </t>
+
+        <section anchor="behavioral-cache-receiving">
+          <name>Receiving Neighbor Solicitations</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="behavioral-cache-unsolicited">
+          <name>Receiving Unsolicited Traffic</name>
+          <t>
+          </t>
+        </section>
+      </section>
+
+      <section anchor="behavioral-nud">
+        <name>Neighbor Unreachability Detection</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="behavioral-dad">
+        <name>Duplicate Address Detection</name>
+        <t>
+        </t>
       </section>
     </section>
 
@@ -243,6 +347,24 @@
       <name>Protocol Optimizations</name>
       <t>
       </t>
+
+      <section anchor="optimizations-dad">
+        <name>Duplicate Address Detection Caching</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="optimizations-lovma">
+        <name>Conveying Voucher-Related Information via the LOVMA</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="optimizations-kdfs-et-al">
+        <name>Choosing Key Derivation Functions &amp; Parameters</name>
+        <t>
+        </t>
+      </section>
     </section>
 
     <section anchor="transitions">
@@ -312,6 +434,19 @@ source code goes here [REPLACE]
       <t>
       </t>
 
+      <section anchor="security-binding">
+        <!-- From SEND:
+            SEND does not compensate for an unsecured link layer.  For instance,
+            there is no assurance that payload packets actually come from the
+            same peer against which the NDP was run.
+            Likewise, VBAs rely on the principle that two link-layer addresses CANNOT share the same broadcast medium.
+            VBAs offer great protection for unsecured L2 setups, but link-layer security would help to remediate further concerns.
+        -->
+        <name>Link-Layer Bindings</name>
+        <t>
+        </t>
+      </section>
+
       <section anchor="security-solutions">
         <name>How VBAs Balance Privacy &amp; Security</name>
         <t>
@@ -324,7 +459,7 @@ source code goes here [REPLACE]
         </section>
 
         <section anchor="security-solutions-privacy">
-          <name>Privacy &amp; Untraceable Addresses</name>
+          <name>Private &amp; Ephemeral Addresses</name>
           <t>
           </t>
         </section>
