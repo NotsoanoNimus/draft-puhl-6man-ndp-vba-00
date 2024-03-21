@@ -67,8 +67,9 @@
     </abstract>
   </front>
 
+
   <middle>
-    <section anchor="vba-intro">
+    <section anchor="intro">
       <name>Introduction</name>
       <t>
         This document introduces Voucher-Based Addressing (VBA) in IPv6 networks as an optional functionality for Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/>.
@@ -76,13 +77,178 @@
       
       <section>
         <name>Requirements Language</name>
-        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        <t>
+          The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
           "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
           RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
           interpreted as described in BCP 14 <xref target="RFC2119"/>
           <xref target="RFC8174"/> when, and only when, they appear in
-          all capitals, as shown here.</t>
+          all capitals, as shown here.
+        </t>
       </section>
+    </section>
+
+    <section anchor="terms">
+      <name>Terms</name>
+      <t>
+      </t>
+    </section>
+
+    <section anchor="summary">
+      <name>Voucher-Based Addressing Overview</name>
+      <t>
+      </t>
+
+      <section anchor="summary-generate">
+        <name>Address Generation</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="summary-verify">
+        <name>Address verification</name>
+        <t>
+        </t>
+      </section>
+    </section>
+
+    <section anchor="behavioral">
+      <name>Behavioral Neighbor Discovery Changes</name>
+      <t>
+      </t>
+
+      <section anchor="behavioral-cache">
+        <name>Guarding the ND Cache</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="behavioral-nud">
+        <name>Neighbor Unreachability Detection</name>
+        <t>
+        </t>
+      </section>
+    </section>
+
+    <section anchor="addenda">
+      <name>Neighbor Discovery Protocol Options</name>
+      <t>
+      </t>
+
+      <section anchor="addenda-voucher">
+        <name>RA Link Voucher Option</name>
+        <t>
+        </t>
+
+        <section anchor="addenda-voucher-senders">
+          <name>Processing Rules for Senders</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="addenda-voucher-receivers">
+          <name>Processing Rules for Receivers</name>
+          <t>
+          </t>
+        </section>
+      </section>
+
+      <section anchor="addenda-voucher-summary">
+        <name>ND Voucher Summary Option</name>
+        <t>
+        </t>
+
+        <section anchor="addenda-voucher-senders">
+          <name>Processing Rules for Senders</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="addenda-voucher-receivers">
+          <name>Processing Rules for Receivers</name>
+          <t>
+          </t>
+        </section>
+      </section>
+    </section>
+
+    <section anchor="lovma">
+      <name>Local On-link Voucher Multicast Address (LOVMA)</name>
+      <t>
+      </t>
+
+      <section anchor="lovma-purpose">
+        <name>Definition &amp; Purpose</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="lovma-purpose-constraints">
+        <name>Constraints</name>
+        <!-- no sending unicast responses, unidirectional channel; membership optional -->
+        <t>
+        </t>
+      </section>
+
+      <section anchor="lovma-packets">
+        <name>Defined Datagrams</name>
+        <t>
+        </t>
+
+        <section anchor="lovma-packets-vsr">
+          <name>Voucher Status Reports (VSRs)</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="lovma-packets-handoff">
+          <name>Voucher Handoff Advertisements (VHAs)</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="lovma-packets-pvr">
+          <name>Preemptive Voucher Rotations (PVRs)</name>
+          <t>
+          </t>
+        </section>
+      </section>
+
+      <section anchor="lovma-extensibility">
+        <name>Extensibility &amp; Experimentation</name>
+        <t>
+        </t>
+      </section>
+    </section>
+
+    <section anchor="bearers">
+      <name>Voucher Bearers</name>
+      <t>
+      </t>
+
+      <section anchor="bearers-vigilance">
+        <name>Vigilance &amp; RA-Guard</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="bearers-unorthodox">
+        <name>Unorthodox Bearers</name>
+        <t>
+        </t>
+      </section>
+    </section>
+
+    <section anchor="optimizations">
+      <name>Protocol Optimizations</name>
+      <t>
+      </t>
+    </section>
+
+    <section anchor="transitions">
+      <name>Transition Mechanisms</name>
+      <t>
+      </t>
     </section>
     
     <section>
@@ -139,22 +305,69 @@ source code goes here [REPLACE]
           </artwork>
         </artset>
       </figure>
-    </section>   
-    
-    <section anchor="IANA">
-    <!-- All drafts are required to have an IANA considerations section. See RFC 8126 for a guide.-->
-      <name>IANA Considerations</name>
-      <t>This memo includes no request to IANA. [CHECK]</t>
     </section>
     
     <section anchor="Security">
-      <!-- All drafts are required to have a security considerations section. See RFC 3552 for a guide. -->
       <name>Security Considerations</name>
-      <t>This document should not affect the security of the Internet. [CHECK]</t>
+      <t>
+      </t>
+
+      <section anchor="security-solutions">
+        <name>How VBAs Balance Privacy &amp; Security</name>
+        <t>
+        </t>
+
+        <section anchor="security-solutions-proof">
+          <name>Proof of Address Ownership</name>
+          <t>
+          </t>
+        </section>
+
+        <section anchor="security-solutions-privacy">
+          <name>Privacy &amp; Untraceable Addresses</name>
+          <t>
+          </t>
+        </section>
+      </section>
+
+      <section anchor="security-usurp">
+        <name>Hijacking Vouchers</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="security-dos">
+        <name>Denial of Service</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="security-static">
+        <name>Static Addressing</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="security-collisions">
+        <name>Hash Collisions</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="security-fairness">
+        <name>Computational Fairness</name>
+        <t>
+        </t>
+      </section>
     </section>
     
-    <!-- NOTE: The Acknowledgements and Contributors sections are at the end of this template -->
+    <section anchor="IANA">
+      <name>IANA Considerations</name>
+      <t>
+      </t>
+    </section>
   </middle>
+
 
   <back>
     <references>
@@ -165,6 +378,10 @@ source code goes here [REPLACE]
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <!-- key-derivation crypto resources -->
       </references>
       <!-- <references>
         <name>Informative References</name>
@@ -188,9 +405,15 @@ source code goes here [REPLACE]
         </reference>       
       </references> -->
     </references>
-    <section>
-      <name>Appendix 1 [REPLACE/DELETE]</name>
-      <t>This becomes an Appendix [REPLACE]</t>
+    
+    <section anchor="appendices">
+      <name>Appendices</name>
+
+      <section anchor="appendices-a">
+        <name>Appendix A</name>
+        <t>
+        </t>
+      </section>
     </section>
  </back>
 </rfc>
