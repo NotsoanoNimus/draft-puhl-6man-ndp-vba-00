@@ -72,7 +72,11 @@
     <section anchor="intro">
       <name>Introduction</name>
       <t>
+        <!-- TODO -->
         This document introduces Voucher-Based Addressing (VBA) in IPv6 networks as an optional functionality for Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/>.
+      </t>
+      <t>
+        VBAs operate on the principle that active spoofing requires the impersonation <!-- TODO -->
       </t>
       
       <section anchor="intro-requirements">
@@ -102,13 +106,34 @@
     </section>
 
     <section anchor="summary">
-      <name>Voucher-Based Addressing Overview</name>
+      <name>Voucher-Based Addressing</name>
       <t>
+        This section outlines the design goals of Voucher-Based Addressing. It includes concrete processes and
+        procedures used by VBA-enabled network nodes to verify address ownership and to simultaneously create
+        pseudo-random network addresses.
       </t>
 
-      <section anchor="summary-binding">
-        <name>Link-Layer Bindings &amp; Controversies</name>
+      <section anchor="summary-overview">
+        <name>Design Overview</name>
         <t>
+          A Voucher-Based Address is defined as any IPv6 unicast address derived from on-link voucher information.
+          The address derivation process is driven by a static, well-known procedure parameterized by a mixture of
+          voucher details and public node information. This same derivation process is used by other on-link nodes
+          to independently verify the link-layer binding of the address during the Neighbor Discovery Address
+          Resolution process.
+        </t>
+        <t>
+          Because deterministic address generation directly depends on the value of the link-layer identifier of the
+          node, purported network and target link-layer addresses cannot be falsified in NDP exchanges. Address
+          verification is a process parameterized by (1) data which identifies the node's network interface, and (2)
+          data which lies OUTSIDE of the generating node's administration. Such information comprises a part of the
+          Link Voucher details agreed upon by all neighbors.
+        </t>
+        <t>
+          Consider the following dishonest transactions a node on a VBA-enabled network might consider:
+          <ul>
+            <li>Generating a false link-layer address.</li>
+          </ul>
         </t>
       </section>
 
@@ -124,16 +149,16 @@
         </t>
       </section>
 
+      <section anchor="summary-binding">
+        <name>Link-Layer Bindings &amp; Controversies</name>
+        <t>
+        </t>
+      </section>
+
       <section anchor="summary-interfaces">
         <name>Interface-level Configurations</name>
         <t>
         </t>
-
-        <section anchor="summary-interfaces-state">
-          <name>Preserving Voucher-Related State</name>
-          <t>
-          </t>
-        </section>
 
         <section anchor="summary-interfaces-state">
           <name>Preserving Voucher-Related State</name>
@@ -169,28 +194,102 @@
 
     <section anchor="addenda">
       <name>Neighbor Discovery Protocol Options</name>
-      <t>
-      </t>
+      <t>The NDP option formats specified in this section MUST be supported to enable VBA functionality.</t>
 
       <section anchor="addenda-voucher">
-        <name>RA Link Voucher Option</name>
+        <name>Link Voucher Option</name>
         <t>
+          The Link Voucher (LV) option specifies the address generation (and consequent verification)
+          parameters which on-link hosts should agree upon when generating their addresses.
         </t>
+
+        <figure>
+          <name>Structure of the NDP Link Voucher option</name>
+          <!-- TODO -->
+          <artwork type="ascii-art" name="linkVoucherOption.txt">
+            <![CDATA[
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Type      |    Length     |   Pad Length  |   Reserved    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                                                               |
+    .                                                               .
+    .                        CGA Parameters                         .
+    .                                                               .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                                                               |
+    .                                                               .
+    .                           Padding                             .
+    .                                                               .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+            ]]>
+          </artwork>
+        </figure>
+
+        <dl newline="true">
+          <dt>Type</dt><dd>63</dd>
+          <dt>Length</dt><dd>The total length of the LV from the Type through its end -- inclusive -- in units of 8 octets.</dd>
+          <!-- TODO: Add all parameter definitions per LV specification. -->
+        </dl>
 
         <section anchor="addenda-voucher-senders">
           <name>Processing Rules for Senders</name>
           <t>
+            Senders of Link Vouchers MUST maintain stateful information about their LVs at all times, so reliable and consistent
+            LV details can be sent at any time. The rotation of stable LV information, such as the Seed value or Expiration details,
+            SHOULD be signaled in advance using the LOVMA group <xref target="lovma-packets-pvr"/>. Transferral of LV responsibility
+            to another LV identifier SHOULD use similar means <xref target="lovma-packets-vha"/>.
           </t>
+          <t>The Sender's LV MUST always be unique on-link and NEVER be forwarded or duplicated copies of other LVs.</t>
+          <t>
+            Sending nodes wishing to distribute a Link Voucher MUST first check the local link for an already-active LV. This
+            entails following a process of router discovery, then only assuming LV responsibility if no LV is already present.
+            <ol>
+              <li>Send a Router Soliciation to the All Routers multicast group at FF02::2.</li>
+              <li>Wait for an LV for at least 2 seconds before sending another Soliciation.</li>
+              <li>Repeat this process 2 more times.
+                <ul>
+                  <li>If an LV is received within a Router Advertisement response, accept and use the parameters of the received LV.
+                    This condition means the sender MUST NOT send their own LV, nor should it propagate any instances of LV options.</li>
+                  <li>If no LV is received after the 3 total attempts, and...
+                    <ul>
+                      <li>the Sender IS NOT a router: the Sender's LV may be distributed on the local link as an option attached
+                        to an appropriate NDP Redirect packet.</li>
+                      <li>the Sender IS a router: the Sender may attach its LV to an appropriate NDP Router Advertisement packet.</li>
+                </ul>
+              </li>
+            </ol>
+          </t>
+          <t>
+            On-link nodes responsible for an LV (also known as Voucher Bearers (VBs) -- see the VB section <xref target="bearers"/>)
+            MUST respond to Router Soliciation packets. This is true regardless of  whether the VB is using a Redirect or Router
+            Advertisement to distribute its LV.
+          </t>
+          <t>
+            Protecting the link from rogue LVs is crucial to securely maintain the full consensus of the local network.
+            See the section on RA-Guard <xref target="bearers-vigilance"/> and LV Hijacking <xref target="security-usurp"/>
+            for more details.
         </section>
 
         <section anchor="addenda-voucher-receivers">
           <name>Processing Rules for Receivers</name>
+          <!-- TODO -->
           <t>
+            Receiving nodes MUST statefully maintain and update all LV information per-link, if and only if the received LV is
+            successfully verified according to its cryptographic signature.
+          </t>
+          <t>A Link Voucher option appearing with any packet except NDP Router Advertisements or NDP Redirects MUST be ignored.</t>
+          <t>
+            Nodes acting as authorized Voucher Bearers <xref target="bearers"/> MUST disregard any received LV options on the links
+            for which they are already the responsible VB.
           </t>
         </section>
 
-        <section anchor="addenda-voucher-publickey">
-          <name>Voucher Signatures &amp; Neighbor Trust</name>
+        <section anchor="addenda-voucher-signatures">
+          <name>Voucher Signatures</name>
           <t>
           </t>
         </section>
@@ -227,7 +326,7 @@
       </t>
 
       <section anchor="behavioral-send">
-        <name>Changes Adopted from Secure Neighbor Discovery</name>
+        <name>Changes Adopted from SEND</name>
         <t>
         </t>
 
@@ -239,14 +338,15 @@
 
         <section anchor="behavioral-send-levels">
           <!-- See Section 8 of RFC 3971. -->
-          <name>Secured &amp; Unsecured Messages</name>
+          <name>Secured &amp; Unsecured Distinctions</name>
           <t>
+            Section x of the SEND RFC <xref target="RFC3971"/> defines a
           </t>
         </sections>
       </section>
 
       <section anchor="behavioral-cache">
-        <name>Guarding the ND Cache</name>
+        <name>Protecting the ND Cache</name>
         <t>
         </t>
 
@@ -259,6 +359,22 @@
         <section anchor="behavioral-cache-unsolicited">
           <name>Receiving Unsolicited Traffic</name>
           <t>
+            Any node receiving unsolicited traffic from a neighbor, for which no response is required from
+            the receiver -- such as UDP-based applications -- MAY choose to validate the sender according
+            to this specification. This would necessarily require the neighbor verification process to be
+            conducted in reverse.
+          </t>
+          <t>
+            If the sending neighbor is already in the receiver's neighbor cache, then the receiver SHOULD
+            NOT verify the address of the sender.
+          </t>
+          <t>
+            As stated in this document's introduction <xref target="intro"/>,
+            VBA employment primarily supplies privacy-focused address generation and uses neighbor address
+            verification to provide proof of address ownership. The goal is to prevent on-path attackers
+            from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
+            which no response is required does not merit an explicit condition that the sending neighbor
+            be verified.
           </t>
         </section>
       </section>
@@ -272,6 +388,12 @@
       <section anchor="behavioral-dad">
         <name>Duplicate Address Detection</name>
         <t>
+          When generating a VBA, the node MUST follow the ordinary means of Duplicate Address Detection (DAD)
+          specified by the SLAAC RFC (section 5.4 of <xref target="RFC4862"/>). The DAD procedure SHOULD follow
+          any applicable DAD optimizations (<xref target="RFC4429"/>, <xref target="RFC7527"/>, etc.).
+        </t>
+        <t>
+          Upon encountering a genuinely duplicate address
         </t>
       </section>
     </section>
@@ -287,11 +409,21 @@
         </t>
       </section>
 
-      <section anchor="lovma-purpose-constraints">
+      <section anchor="lovma-constraints">
         <name>Constraints</name>
         <!-- no sending unicast responses, unidirectional channel; membership optional -->
         <t>
+          Care should be taken when utilizing the LOVMA for any purpose, experimental or deployed,
+          to regard the following constraints:
         </t>
+        <ul>
+          <li>LOVMA traffic is considered unidirectional. Nodes SHOULD NOT send unicast responses in reply to multicast traffic.
+            This recommended constraint acts to prevent asymmetric traffic volume and potential denial of service vulnerabilites
+            leveraging the LOVMA.</li>
+          <li>VBA-enabled nodes MUST NOT assume that other VBA-enabled nodes are subscribed to the LOVMA multicast group.</li>
+          <li>Subscribing nodes MUST NOT offer any trust of LOVMA packets, unless a datagram validation procedure is explicitly
+            declared for the extension protocol using the LOVMA.</li>
+        </ul>
       </section>
 
       <section anchor="lovma-packets">
@@ -305,7 +437,7 @@
           </t>
         </section>
 
-        <section anchor="lovma-packets-handoff">
+        <section anchor="lovma-packets-vha">
           <name>Voucher Handoff Advertisements (VHAs)</name>
           <t>
           </t>
@@ -439,7 +571,7 @@ source code goes here [REPLACE]
             SEND does not compensate for an unsecured link layer.  For instance,
             there is no assurance that payload packets actually come from the
             same peer against which the NDP was run.
-            Likewise, VBAs rely on the principle that two link-layer addresses CANNOT share the same broadcast medium.
+            Likewise, VBAs rely on the principle that link-lyer addresses MUST be unique on the same broadcast medium.
             VBAs offer great protection for unsecured L2 setups, but link-layer security would help to remediate further concerns.
         -->
         <name>Link-Layer Bindings</name>
@@ -466,7 +598,7 @@ source code goes here [REPLACE]
       </section>
 
       <section anchor="security-usurp">
-        <name>Hijacking Vouchers</name>
+        <name>Hijacking Link Vouchers</name>
         <t>
         </t>
       </section>
@@ -475,6 +607,18 @@ source code goes here [REPLACE]
         <name>Denial of Service</name>
         <t>
         </t>
+
+        <section anchor="security-dos-dad">
+          <name>Duplicate Address Detection</name>
+          <t></t>
+        </section>
+
+        <section anchor="security-dos-grand">
+          <name>Gratuitous Neighbor Discovery</name>
+          <!-- RFC 9131 considerations. -->
+          <t>
+          </t>
+        </section>
       </section>
 
       <section anchor="security-static">
@@ -492,6 +636,32 @@ source code goes here [REPLACE]
       <section anchor="security-fairness">
         <name>Computational Fairness</name>
         <t>
+        </t>
+      </section>
+
+      <section anchor="security-pki">
+        <name>Certifying Link Vouchers</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="security-anycast">
+        <name>Anycast Addresses</name>
+        <t>
+          Anycast addresses are allocated from the unicast address space and are thus indistinguishable to
+          nodes establishing connections to them. NDP exchanges with these hosts may therefore respond with
+          varying Target Link-Layer Address options and cause VBA verification to be unreliable.
+          For this reason, it is NOT RECOMMENDED to utilize anycast addresses for on-link prefixes within
+          VBA-enabled networks, because the ownership of the address cannot be bound to a particular
+          link-layer identifier.
+        </t>
+        <t>
+          The IPv6 Addressing Architecture RFC <xref target="RFC4291"/> outlines a Required Anycast Address
+          in Section 2.6.1. VBA-enabled links SHOULD maintain compatibility with this requirement by disabling
+          verification for on-link subnet anycast addresses. For example, a host using SLAAC to generate an
+          address in the subnet 2001:db8:700::/64 SHOULD disable VBA expectations and verifications for the
+          address 2001:db8:700::. Because VBA protections must be disabled for this target host, implementations
+          SHOULD avoid using the subnet Required Anycast Address altogether.
         </t>
       </section>
     </section>
@@ -513,9 +683,14 @@ source code goes here [REPLACE]
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
       </references>
       <references>
         <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4291.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4429.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7527.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/>
         <!-- key-derivation crypto resources -->
       </references>
       <!-- <references>
