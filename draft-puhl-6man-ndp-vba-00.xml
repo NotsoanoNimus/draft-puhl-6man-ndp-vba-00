@@ -53,7 +53,7 @@
     <keyword>privacy</keyword>
     <abstract>
       <t>
-        This document specifies a new IPv6 unicast address generation and verification methodology for local
+        This document specifies an extensible IPv6 unicast address generation and verification methodology for local
         networks. Individual interface identifiers are coupled to a set of deterministic output addresses, which
         remain outwardly private even if the interface identifier is stable. Distributed vouchers on-link are
         used to form a consensus between neighbors of the parameters used in the address derivation process.
@@ -72,7 +72,18 @@
     <section anchor="intro">
       <name>Introduction</name>
       <t>
-        <!-- TODO -->
+        In this document, a method for IPv6 address generation is posited that offers an alternative solution to the address ownership problem,
+        enables extensible and private unicast address generation, and prevents on-path attacks in IPv6 local networks. Using an agreed-upon key
+        derivation function to map input components one-to-one to output ciphertexts, hardware interface link-layer identifiers can be reliably
+        coupled to a set of deterministically generated IPv6 addresses and subsequently verified by neighboring nodes. All verifications are
+        decentralized and do not require public-key cryptography; only shared consensus on a distributed, pseudo-random value used to seed the
+        address generation procedure. The same deterministic algorithm produces IPv6 address suffixes which appear statistically random to devices
+        outside the local broadcast domain, who are by design unaware of all input parameters associated with the address. This document represents
+        a novel application of cryptographic key-stretching methodologies to IPv6 address generation. The result is a secure, high-impact, low-complexity
+        change bundled with various transition capabilities, effectively corroborating IPv6 address ownership to defeat threat actors engaged in malicious
+        network-layer spoofing.
+      </t>
+      <t>
         This document introduces Voucher-Based Addressing (VBA) in IPv6 networks as an optional functionality for Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/>.
       </t>
       <t>
@@ -100,9 +111,34 @@
     </section>
 
     <section anchor="terms">
-      <name>Terms</name>
+      <name>Terminology</name>
       <t>
+        Many of the terms in this document are defined in Section 2.1 of the most current NDP standard <xref target="RFC4861"/>.
       </t>
+
+      <t>
+        An alphabetical glossary of terms related to this document, but not necessarily defined herein
+        or appearing in the NDP specification, is specified in this section. Items appearing here may
+        or may not be acronymized even in their first appearances in future sections (but never in
+        section headers), so knowledge of them is assumed henceforth.
+      </t>
+
+      <dl>
+        <dt>Neighbors</dt>
+        <dd>Nodes attached to the same link.</dd>
+
+        <dt>Key Derivation Function</dt>
+        <dd>Definition of the second term [REPLACE/DELETE]</dd>
+
+        <dt>Link</dt>
+        <dd></dd>
+
+        <dt>Node</dt>
+        <dd>A device that implements IP; specifically IPv6 in the case of this specification.</dd>
+
+        <dt>Voucher</dt> 
+        <dd>A data payload intended to be disseminated by a responsible node on-link.</dd>
+      </dl>
     </section>
 
     <section anchor="summary">
@@ -286,6 +322,30 @@
             Nodes acting as authorized Voucher Bearers <xref target="bearers"/> MUST disregard any received LV options on the links
             for which they are already the responsible VB.
           </t>
+        </section>
+
+        <section anchor="addenda-voucher-kdfs">
+          <name>Algorithm Settings</name>
+          <t>
+          </t>
+
+          <section anchor="addenda-voucher-kdfs-pbkdf2">
+            <name>PBKDF2</name>
+            <t>
+            </t>
+          </section>
+
+          <section anchor="addenda-voucher-kdfs-argon2d">
+            <name>Argon2d</name>
+            <t>
+            </t>
+          </section>
+
+          <section anchor="addenda-voucher-kdfs-scrypt">
+            <name>Scrypt</name>
+            <t>
+            </t>
+          </section>
         </section>
 
         <section anchor="addenda-voucher-signatures">
@@ -531,7 +591,7 @@
     </section>
 
     <section anchor="optimizations">
-      <name>Protocol Optimizations</name>
+      <name>Specification Optimizations</name>
       <t>
       </t>
 
@@ -552,6 +612,12 @@
 
       <section anchor="optimizations-kdfs-et-al">
         <name>Choosing Key Derivation Functions &amp; Parameters</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="optimizations-lovma">
+        <name>Voucher Summary Options</name>
         <t>
         </t>
       </section>
