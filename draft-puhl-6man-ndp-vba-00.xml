@@ -283,13 +283,15 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
 
       <section anchor="summary-verify">
         <name>Address Verification</name>
-        <t>This section provides a procedural overview of VBA address verification. Two important relative terms will
-          need to be established for the sake of clarity:</t>
+        <t>
+          This section provides a procedural overview of VBA address verification. Two important relative terms will
+          need to be established for the sake of clarity:
+        </t>
         <dl>
-          <dd>Client Node</dd>
-          <dt>The node resolving the link-layer address of a neighbor; sends the initial Neighbor Soliciation packet.</dt>
-          <dd>Target Node</dd>
-          <dt>The node supplying its target link-layer address in a responding Neighbor Advertisement.</dt>
+          <dt>Client Node</dt>
+          <dd>The node resolving the link-layer address of a neighbor; sends the initial Neighbor Soliciation packet.</dd>
+          <dt>Target Node</dt>
+          <dd>The node supplying its target link-layer address in a responding Neighbor Advertisement.</dd>
         </dl>
         <t>
           VBA address verification MUST only performed during the Address Resolution phase of an NDP exchange, where
@@ -311,7 +313,7 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
  |                         |
  |     +~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~~+
  `---->| H := K(           |           |
-       |   L := iters(B),  |           |
+   (3) |   L := iters(B),  |           |
        |   LV->seed,  v----'           |
        |   makeSalt(MAC, prefix(B))    |
        | );                            |
@@ -320,7 +322,7 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
            `----> +~~~~~~~~~~~~~~~~~~~~~~~+
                   | suffix(Z(L), H) === B |
                   +~~~~~~~~~~~~~~~~~~~~~~~+
-                   {????}
+              (4)  {????}
                     |  |
 DROP <-- false <----'  `---> true --> ACCEPT/CACHE
 
