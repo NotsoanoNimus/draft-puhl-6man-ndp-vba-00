@@ -732,62 +732,6 @@
       </t>
     </section>
     
-    <section>
-      <name>Body [REPLACE]</name>
-      <t>Body text [REPLACE]</t>
-      
-      <ol>
-        <li>Ordered list item [REPLACE/DELETE]</li>
-      </ol>
-      
-      <ul>
-        <li>Bulleted list item [REPLACE/DELETE]</li>
-      </ul>
-      
-      <dl newline="true">
-        <!-- Omit newline="true" if you want each definition to start on the same line as the corresponding term -->
-        <dt>First term: [REPLACE/DELETE]</dt>
-        <dd>Definition of the first term [REPLACE/DELETE]</dd>
-        <dt>Second term: [REPLACE/DELETE]</dt>
-        <dd>Definition of the second term [REPLACE/DELETE]</dd>
-      </dl>
-      
-      <table>
-        <thead>
-        <!-- [REPLACE/DELETE] a table header is optional -->
-          <tr><th>Column 1 [REPLACE]</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Cell [REPLACE]</td></tr>
-        </tbody>
-      </table>
-
-      <figure>
-        <name>Source [REPLACE]</name>
-        <sourcecode name="suggested filename [REPLACE/DELETE]" type="language [REPLACE/DELETE]" markers="true">
-          <![CDATA[
-source code goes here [REPLACE]
-          ]]>
-        </sourcecode>
-        <!-- [CHECK] markers="true" means that the rendered file will have <CODE BEGINS> and <CODE ENDS> added -->
-      </figure>
-
-      <figure>
-        <name>Diagram [REPLACE]</name>
-        <artset>
-        <!-- This <artset> includes two <artwork> elements, each of a different type -->
-          <artwork type="svg" src="https://www.rfc-editor.org/materials/format/svg/stream.svg" />
-          <!-- [REPLACE] src points to either a local file or a URI. -->
-          <artwork type="ascii-art" name="stream.txt">
-            <!-- [REPLACE/DELETE] name recommends a filename to use if the diagram is extracted -->  
-            <![CDATA[
- ascii-art diagram goes here [REPLACE]
-            ]]>
-          </artwork>
-        </artset>
-      </figure>
-    </section>
-    
     <section anchor="Security">
       <name>Security Considerations</name>
       <t>
