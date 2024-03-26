@@ -143,7 +143,7 @@
           transmit Router Advertisements or Redirects with an LV attached.
         </dd>
 
-        <dt>Voucher Summary (VS)</dt>
+        <dt>Voucher Status Report (VSR)</dt>
         <dd>A type of data payload sent by VBA-enabled nodes to the LOVMA. Shares information about the node's VBA-related
           preferences. Mainly used in optimizations and is an optional protocol feature.</dd>
 
@@ -195,6 +195,7 @@
           Consider the following dishonest transactions a node on a VBA-enabled network might consider:
         </t>
         <ul>
+          <!-- TODO -->
           <li>Generating a false link-layer address. </li>
         </ul>
       </section>
@@ -206,10 +207,8 @@
         </t>
         <figure>
           <name>The Voucher-Based Address Generation Procedure</name>
-          <!-- TODO -->
           <artwork type="ascii-art" name="vbaGeneration.txt">
             <![CDATA[
-
 Address composition:
           PREFIX    //      SUFFIX (64 bits)
     +------ ~ ------+-------------+---------------------+
@@ -235,7 +234,6 @@ Z      = ~(L ^ H[2..3])
 
 SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
                         `--> (using 0-based indexing)
-
             ]]>
           </artwork>
         </figure>
@@ -315,7 +313,7 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           This section provides a procedural overview of VBA address verification. Two important relative terms will
           need to be established for the sake of clarity:
         </t>
-        <dl>
+        <dl newline="true">
           <dt>Client Node</dt>
           <dd>The node resolving the link-layer address of a neighbor; sends the initial Neighbor Soliciation packet.</dd>
           <dt>Target Node</dt>
@@ -330,7 +328,6 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           <name>The Voucher-Based Address Verification Procedure</name>
           <artwork type="ascii-art" name="vbaVerification.txt">
             <![CDATA[
-
  ,-- [advertise] <---.
  V       (2)         |
 |A|{LV}             |B|{LV}{MAC}
@@ -353,13 +350,18 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
                    +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
                         (4)  {????}
                               |  |
-            DROP <-- false <---'  '---> true --> ACCEPT/CACHE
-
+           DROP <-- false <---'  '---> true --> ACCEPT/CACHE
             ]]>
           </artwork>
         </figure>
         <t>
-          In the above figure, the "Z'" function returns the iterations count embedded in Host B's address.
+          The Link Voucher 'LV' MUST always be used from the state preserved on the verifying interface. Nodes
+          SHALL NOT request the Link Vouchers of others for any reason. If the verification procedure fails due
+          to a LV mismatch between hosts A and B, then there is either (1) a synchronization problem or (2)
+          multiple on-link vouchers being distributed.
+        </t>
+        <t>
+          In the above figure, the "Z'" (Z-prime) function returns the iterations count embedded in Host B's address.
           This function is the opposite of 'Z'; it uses an input address to determine 'L' rather than using
           an input 'L' to determine an output hextet. Despite the different inputs, the naming alludes to the
           opposite purposes for each function.
@@ -372,6 +374,28 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           <dd>Returns an iterations count derived from a full IPv6 address. In this case, 'B[8..9]' is equal to
             the length and position of the hextet calculated by the function 'Z' above.</dd>
         </dl>
+        <t>
+          See the figure below for a visualization of computing Z' from a Voucher-Based Address.
+        </t>
+        <figure>
+          <name>Extracting the Embedded Iterations Count (Z')</name>
+          <artwork type="ascii-art" name="embeddedIterations.txt">
+            <![CDATA[
+                                  SUFFIX
+                       _____________/\____________
+                      /                           \
+Byte: 0      ..     7 8    9    10   11   12 .. 15
+      +------ ~ ------+----+----+----+----+-- ~ --+
+Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
+      +------ ~ ------+----+----+----+----+-- ~ --+
+                      \________/\________/
+                           |         |
+                        B[8..9]  B[10..11]
+
+    Z'  =  L  =  NOT( B[8..9] XOR B[10..11] )
+            ]]>
+          </artwork>
+        </figure>
         <t>
           See [<!-- appendix ref -->] for sample code in the C programming language which might better
           demonstrate VBA address verification.
@@ -401,6 +425,8 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           <t>
             Per-interface modes (IEMs) are able to granularly dictate the local NDP behaviors related to VBAs.
             This flexibility in per-interface behavior grants VBAs more transition and adoption capabilities.
+            A tiny state machine diagram would represent all of these states as being transitionable to any
+            other.
           </t>
           <t>
             Implementations MUST allow nodes to independently opt into any one of the following IEMs for EACH
@@ -410,7 +436,8 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           <dl newline="true">
             <dt>AAD - Address Awareness Disabled</dt>
             <dd>The VBA-aware interface MUST NOT generate or verify any addresses, regardless of the incoming
-              packets. It MUST NOT participate in any LOVMA traffic exchanges. In this mode, VBAs are ignored.</dd>
+              packets. It MUST NOT participate in any LOVMA traffic exchanges. In this mode, VBAs are ignored.
+              This mode SHALL always be used by VBA-enabled interfaces on links without an established LV.</dd>
 
             <dt>AGO - Address Generation Only</dt>
             <dd>The address generation procedure is followed for unicast addresses. The NDP Address Resolution
@@ -428,7 +455,7 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
               MUST be indicated as "Unsecured" and given less trust or authority than "Secured" responses.</dd>
           </dl>
           <t>
-            For AGVL mode, the Secured and Unsecured distinction is inherited from SEND (<xref target="RFC3971"/>).
+            For AGVL mode, the Secured and Unsecured distinction is inherited from SEND <xref target="RFC3971"/>.
             If an AGVL interface receives multiple Neighbor Advertisement responses, it MUST strongly prefer Secured
             NAs over Unsecured NAs to determine which link-layer address is legitimate during the Address Resolution
             process. If multiple Secured responses are received, each with different link-layer addresses, then there
@@ -449,33 +476,40 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           The Link Voucher (LV) option specifies the address generation (and consequent verification)
           parameters which on-link hosts should agree upon when generating their addresses.
         </t>
-
         <figure>
           <name>Structure of the NDP Link Voucher option</name>
-          <!-- TODO -->
           <artwork type="ascii-art" name="linkVoucherOption.txt">
             <![CDATA[
-     0                   1                   2                   3
-     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |     Type      |    Length     |   Pad Length  |   Reserved    |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                                                               |
-    .                                                               .
-    .                        CGA Parameters                         .
-    .                                                               .
-    |                                                               |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                                                               |
-    .                                                               .
-    .                           Padding                             .
-    .                                                               .
-    |                                                               |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |     Type      |    Length     |   Pad Length  |   Expiration  |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                            Reserved                           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        64-bit Timestamp                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        64-bit VoucherID                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
+  |                      128-bit Voucher Seed                     |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
+ ...                     TLV Algorithm Settings                  ...
+  |                                                               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
+ ...                     DER-encoded Public Key                  ...
+ ...                          & Signature                        ...
+  |                                                               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
+ ...                           Padding                           ...
+  |                                                               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             ]]>
           </artwork>
         </figure>
-
         <dl newline="true">
           <dt>Type</dt><dd>63</dd>
           <dt>Length</dt><dd>The total length of the LV from the Type through its end -- inclusive -- in units of 8 octets.</dd>
@@ -580,7 +614,47 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
       <section anchor="addenda-summary">
         <name>ND Voucher Summary Option</name>
         <t>
+          The Voucher Summary (VS) option is included with Neighbor Solicitation and Advertisement packets to hint to
+          recipients which active Link Voucher ID is being statefully used on the target or source interface.
         </t>
+        <figure>
+          <name>Structure of the NDP Voucher Summary option</name>
+          <artwork type="ascii-art" name="voucherSummaryOption.txt">
+            <![CDATA[
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |      Type     |     Length    | IEM |        Reserved         |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        64-bit VoucherID                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+            ]]>
+          </artwork>
+        </figure>
+        <dl newline="true">
+          <dt>Type</dt><dd>64</dd>
+          <dt>Length</dt><dd>Set to 1. The total length of the VS from the Type through its end -- inclusive -- in units of 8 octets.</dd>
+          <dt>IEM</dt>
+          <dd>
+            <t>
+              A 3-bit identifier representing the current Interface Enforcement Mode of the sending interface (see
+              <xref target="summary-interfaces-mode"/>).
+            </t>
+            <dl spacing="compact" newline="false">
+              <dt>0</dt><dd>AAD</dd>
+              <dt>1</dt><dd>AGO</dd>
+              <dt>2</dt><dd>AGV</dd>
+              <dt>3</dt><dd>AGVL</dd>
+              <dt>4</dt><dd>Reserved</dd>
+              <dt>5</dt><dd>Reserved</dd>
+              <dt>6</dt><dd>Reserved</dd>
+              <dt>7</dt><dd>Reserved</dd>
+            </dl>
+          </dd>
+          <dt>Reserved</dt><dd>A 13-bit field reserved for future use. This MUST be initialized to zero by the sender and MUST
+            be ignored by the receiver.</dd>
+          <dt>VoucherID</dt><dd>The 64-bit ID of the statefully cached Link Voucher on the sending interface.</dd>
+        </dl>
 
         <section anchor="addenda-summary-senders">
           <name>Processing Rules for Senders</name>
@@ -701,7 +775,7 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
         <t>A figure representing this process visually is shown below:</t>
         <figure>
           <name>Using DAD with VBAs</name>
-          <artwork type="ascii-art" name="linkVoucherOption.txt">
+          <artwork type="ascii-art" name="duplicateAddressDetection.txt">
             <![CDATA[
 COMPUTE & CACHE:
   N = Set of K(L', Key, Salt),
@@ -717,7 +791,6 @@ COMPUTE & CACHE:
   |                      |
   `---> [cached (L-1)    | (3)
          generates B'] --'
-
             ]]>
           </artwork>
         </figure>
@@ -763,7 +836,7 @@ COMPUTE & CACHE:
         </t>
         <t>
           A discussion regarding denial of service attack vectors related to DAD in VBA networks is found in
-          another section <xref target="security-dos-dad"/>.
+          <xref target="security-dos-dad"/>.
         </t>
       </section>
     </section>
@@ -772,8 +845,8 @@ COMPUTE & CACHE:
       <name>Local On-link Voucher Multicast Address (LOVMA)</name>
       <t>
         The LOVMA group is defined for the express purpose of sharing gratuitous, independent VBA details between nodes.
-        All nodes with VBA awareness, regardless of Enforcement Mode (<xref target="summary-interfaces-mode"/>) are
-        strongly RECOMMENDED to join this group. Nodes are NOT REQUIRED to make practical use of any LOVMA traffic.
+        All nodes with VBA awareness, regardless of Interface Enforcement Mode (<xref target="summary-interfaces-mode"/>)
+        are strongly RECOMMENDED to join this group. Nodes are NOT REQUIRED to make practical use of any LOVMA traffic.
       </t>
       <t>
         This multicast group is located at the IPv6 address FF02::ABBA. A helpful mnemonic to remember this address is to
@@ -1024,7 +1097,31 @@ COMPUTE & CACHE:
     <section anchor="IANA">
       <name>IANA Considerations</name>
       <t>
+        This document defines two new Neighbor Discovery Protocol option types and one new link-local multicast
+        address.
       </t>
+      <t>
+        See <xref target="lovma"/> for information about the Local On-link Voucher Multicast Address subscribed
+        to by VBA-enabled network interfaces.
+      </t>
+      <t>
+        Assigned in the "Link-Local Scope Multicast Addresses" subregistry of the "IPv6 Multicast Address Space
+        Registry":
+      </t>
+      <t>
+        Address(es): FF02::ABBA<br />
+        Description: Local On-link Voucher Multicast Address<br />
+        Reference  : draft-puhl-6man-ndp-vba-00
+      </t>
+      <t>
+        Two new Neighbor Discovery Protocol options are defined in this document and must have new Option Type
+        values assigned in the "IPv6 Neighbor Discovery Option Formats" subregistry of the "Internet Control
+        Message Protocol version 6 (ICMPv6) Parameters" registry.
+      </t>
+      <ul>
+        <li>The Link Voucher option, described in <xref target="addenda-voucher"/>.</li>
+        <li>The Voucher Summary option, described in <xref target="addenda-summary"/>.</li>
+      </ul>
     </section>
   </middle>
 
