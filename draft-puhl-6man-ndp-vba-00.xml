@@ -29,7 +29,7 @@
   xml:lang="en"
   version="3">
   <front>
-    <title abbrev="ndp-vba">IPv6 Voucher-Based Address Generation &amp; verification</title>
+    <title abbrev="ndp-vba">IPv6 Voucher-Based Address Generation &amp; Verification</title>
     <seriesInfo name="Internet-Draft" value="draft-puhl-6man-ndp-vba-00"/>
     <author fullname="Zachary Tyler Puhl" initials="Z. T." surname="Puhl">
       <organization>University of Michigan</organization>
@@ -72,16 +72,20 @@
     <section anchor="intro">
       <name>Introduction</name>
       <t>
-        In this document, a method for IPv6 address generation is posited that offers an alternative solution to the address ownership problem,
-        enables extensible and private unicast address generation, and prevents on-path attacks in IPv6 local networks. Using an agreed-upon key
-        derivation function to map input components one-to-one to output ciphertexts, hardware interface link-layer identifiers can be reliably
-        coupled to a set of deterministically generated IPv6 addresses and subsequently verified by neighboring nodes. All verifications are
-        decentralized and do not require public-key cryptography; only shared consensus on a distributed, pseudo-random value used to seed the
-        address generation procedure. The same deterministic algorithm produces IPv6 address suffixes which appear statistically random to devices
-        outside the local broadcast domain, who are by design unaware of all input parameters associated with the address. This document represents
-        a novel application of cryptographic key-stretching methodologies to IPv6 address generation. The result is a secure, high-impact, low-complexity
-        change bundled with various transition capabilities, effectively corroborating IPv6 address ownership to defeat threat actors engaged in malicious
-        network-layer spoofing.
+        Voucher-Based Addressing (VBA) offers an alternative solution to
+        the address ownership problem, enables extensible and private unicast address generation, and prevents
+        on-path attacks in IPv6 local networks. Using an agreed-upon key derivation function to map input components
+        one-to-one to output ciphertexts, hardware interface link-layer identifiers can be reliably coupled to a set
+        of deterministically generated IPv6 addresses and subsequently verified by neighboring nodes. All verifications
+        are decentralized and do not require public-key cryptography; only shared consensus on a distributed,
+        pseudo-random value used to seed the address generation procedure. The same deterministic algorithm produces
+        IPv6 address suffixes appearing statistically random to devices outside the local broadcast domain, who
+        are by design unaware of all input parameters associated with the address.
+      </t>
+      <t>
+        This document represents an application of cryptographic key-stretching methodologies to IPv6 address
+        generation. The result is a secure, high-impact, low-complexity change bundled with various transition
+        capabilities, effectively corroborating IPv6 address ownership to defeat malicious network address spoofing.
       </t>
       <t>
         This document introduces Voucher-Based Addressing (VBA) in IPv6 networks as an optional functionality for Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/>.
@@ -112,17 +116,16 @@
 
     <section anchor="terms">
       <name>Terminology</name>
+      <!-- TODO -->
       <t>
         Many of the terms in this document are defined in Section 2.1 of the most current NDP standard <xref target="RFC4861"/>.
       </t>
-
       <t>
         An alphabetical glossary of terms related to this document, but not necessarily defined herein
         or appearing in the NDP specification, is specified in this section. Items appearing here may
         or may not be acronymized even in their first appearances in future sections (but never in
         section headers), so knowledge of them is assumed henceforth.
       </t>
-
       <dl>
         <dt>Neighbors</dt>
         <dd>Nodes attached to the same link.</dd>
@@ -146,7 +149,7 @@
       <t>
         This section outlines the design goals of Voucher-Based Addressing. It includes concrete processes and
         procedures used by VBA-enabled network nodes to verify address ownership and to simultaneously create
-        pseudo-random network addresses.
+        private, pseudo-random network addresses.
       </t>
 
       <section anchor="summary-overview">
@@ -168,7 +171,7 @@
         <t>
           Consider the following dishonest transactions a node on a VBA-enabled network might consider:
           <ul>
-            <li>Generating a false link-layer address.</li>
+            <li>Generating a false link-layer address. </li>
           </ul>
         </t>
       </section>
@@ -176,6 +179,93 @@
       <section anchor="summary-generate">
         <name>Address Generation</name>
         <t>
+          This section discusses the generation procedure and composition of a VBA.
+        </t>
+        <figure>
+          <name>The Voucher-Based Address Generation Procedure</name>
+          <!-- TODO -->
+          <artwork type="ascii-art" name="vbaGeneration.txt">
+            <![CDATA[
+    Address composition:
+             PREFIX     //      SUFFIX (64 bits)
+        +------ ~ ------+-------------+---------------------+
+        | 64-bit prefix | Z (16 bits) |     H (48 bits)     |
+        +------ ~ ------+-------------+---------------------+
+
+    ... where:
+        PREFIX = The 64-bit subnet prefix. If the prefix is shorter
+                 than 64 bits, the rest of the 64-bit field MUST be
+                 initialized to 0.
+        SUFFIX = The first 8 bytes from the result of a Key Derivation
+                 Function (KDF) 'K' iterated 'L' times. The leftmost
+                 hextet is replaced by the bitwise complement of 'Z'.
+
+    Formulas:
+    H      = K(L, Key, Salt)
+             |---> K    = A KDF specified by the Link Voucher.
+             |---> L    = A random, host-selected 'iterations count'.
+             |---> Key  = The 128-bit Link Voucher seed value.
+             `---> Salt = [LLID] || 'v' || 'b' || 'a' || [PREFIX]
+
+    Z      = ~(L ^ H[2..3])
+
+    SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
+                             `--> (using 0-based indexing)
+            ]]>
+          </artwork>
+        </figure>
+        <t>
+          The Interface Identifier (IID) for all VBAs, called a SUFFIX, embeds two important details for verification:
+          <ul>
+            <li>
+              A 16-bit 'Z' value, calculated as a bitwise complement of the XOR of the 'L' value and the second hextet
+              of the hash 'H'. This calculation uses XOR with the 'H' result to ensure the same iteration count will be
+              unique and provide some resistance to tracking hosts between each generated hash.
+              <ul>
+                <li>
+                  The 'L' value (also called 'iterations count' in this document) is an important value. This parameter
+                  controls how many times the KDF function is iterated to produce the resulting hash. Increasing this
+                  value increases both the work required to generate the VBA and the work required to find potential
+                  hash collisions.
+                </li>
+              </ul>
+            </li>
+            <li>
+              48 bits from the resulting hash, or 'H' value, derived from the KDF after 'L' iterations. Implementations
+              are REQUIRED to use the FIRST 8 bytes of the hash in formulating the SUFFIX value, replacing the first
+              hextet with the 'Z' value as shown in the figure.
+          </ul>
+        </t>
+        <t>
+          The address generation algorithm is detailed procedurally as follows:
+          <ol>
+            <li>A host connects to a VBA network and obtains Link Voucher <xref target="addenda-voucher"/> details.</li>
+            <li>The 'L' value is chosen based on (1) host preference, (2) intended difficulty, or (3) randomly.</li>
+            <li>The Link Voucher details contain instructions for which KDF to use and which seed value to use.</li>
+            <li>
+              The KDF Salt is a variable-length CONCATENATION of a few different values. 'Raw' values indicate
+              binary values, NOT hexademical string notations of the values.
+              <ul>
+                <li>
+                  The raw link-layer identifier of the network interface for which addresses are being generated.
+                  Note that since the Salt value is a variable-length string, this is NOT REQUIRED to be a MAC
+                  address, but it MUST represent the link-layer address to which the IPv6 address will be bound.
+                </li>
+                <li>The string "vba" as a big-endian value.</li>
+                <li>The raw PREFIX (subnet prefix) value. This MUST match the prefix for which the VBA will be generated.</li>
+              </ul>
+            </li>
+            <li>
+              The final address SUFFIX is computed:
+              <ul>
+                <li>The first 16 bits are a bitwise complement of an 'iterations count' value.</li>
+                <li>
+                  The least significant 48 bits are 6 sequential bytes from the result the KDF, skipping the first two
+                  bytes in the sequence.
+                </li>
+              </ul>
+            </li>
+          </ol>
         </t>
       </section>
 
