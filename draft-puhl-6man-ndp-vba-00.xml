@@ -106,6 +106,12 @@
           all capitals, as shown here.
         </t>
       </section>
+
+      <section anchor="intro-binding">
+        <name>Link-Layer Bindings &amp; Controversies</name>
+        <t>
+        </t>
+      </section>
     </section>
 
     <section anchor="terms">
@@ -307,34 +313,28 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
  ,-- [advertise] <--.
  V       (2)        |
 |A|{LV}            |B|{LV}{MAC}
- |                  |      |
- +----> [solicit] --'  <===|=== (solicited node multicast)
- |         (1)             |
- |                         |
- |     +~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~~+
- `---->| H := LV.K(        |           |
-   (3) |   L := iters(B),  |           |
-       |   LV.seed,   v----'           |
-       |   makeSalt(MAC, prefix(B))    |
-       | );                            |
-       +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-           |
-           `----> +~~~~~~~~~~~~~~~~~~~~~~~+
-                  | suffix(Z(L), H) === B |
-                  +~~~~~~~~~~~~~~~~~~~~~~~+
-              (4)  {????}
-                    |  |
-DROP <-- false <----'  `---> true --> ACCEPT/CACHE
+ |   |               |      |
+ +---+-> [solicit] --' <====|=== (solicited-node)
+ |   |      (1)             |
+ |   +---------.            |
+ |   |  +~~~~~~V~~~~~~~~~~~~+~~~~~~~~~~~+
+ `---+->| H := LV.K(        | [rebuild  |
+ (3) |  |   L := iters(B),  |  addr B]  |
+     `--+-> LV.seed,   v----'           |
+        |   makeSalt(MAC, prefix(B))    |
+        | );                            |
+        +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+            |
+            `----> +~~~~~~~~~~~~~~~~~~~~~~~+
+                   | suffix(Z(L), H) === B |
+                   +~~~~~~~~~~~~~~~~~~~~~~~+
+               (4)  {????}
+                     |  |
+  DROP <-- false <---'  '---> true --> ACCEPT/CACHE
 
             ]]>
           </artwork>
         </figure>
-      </section>
-
-      <section anchor="summary-binding">
-        <name>Link-Layer Bindings &amp; Controversies</name>
-        <t>
-        </t>
       </section>
 
       <section anchor="summary-interfaces">
