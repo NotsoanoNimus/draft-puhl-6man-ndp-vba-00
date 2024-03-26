@@ -351,9 +351,9 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
             |      +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
             `----> | [prefix(B) || suffix(Z(L, H), H)] === B |
                    +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-               (4)  {????}
-                     |  |
-  DROP <-- false <---'  '---> true --> ACCEPT/CACHE
+                        (4)  {????}
+                              |  |
+            DROP <-- false <---'  '---> true --> ACCEPT/CACHE
 
             ]]>
           </artwork>
@@ -381,11 +381,18 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
       <section anchor="summary-interfaces">
         <name>Interface-level Configurations</name>
         <t>
+          This section outlines different interface-level configurations and options which may or may not be
+          required in VBA implementations.
         </t>
 
         <section anchor="summary-interfaces-state">
           <name>Preserving Voucher-Related State</name>
           <t>
+            VBA-enabled interfaces for all nodes, regardless of their selected Interface Enforcement Modes, are
+            REQUIRED to store the full state of the most current, validated Link Voucher. If a Link Voucher is not
+            available on-link, then no stored LV state is required and the node MUST enter the Address Awareness
+            Disabled state (see the next section). If a LV subsequently becomes available, the node MAY choose to
+            enter a different state/mode based on the implementation.
           </t>
         </section>
 
@@ -401,6 +408,10 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           </t>
 
           <dl newline="true">
+            <dt>AAD - Address Awareness Disabled</dt>
+            <dd>The VBA-aware interface MUST NOT generate or verify any addresses, regardless of the incoming
+              packets. It MUST NOT participate in any LOVMA traffic exchanges. In this mode, VBAs are ignored.</dd>
+
             <dt>AGO - Address Generation Only</dt>
             <dd>The address generation procedure is followed for unicast addresses. The NDP Address Resolution
               process MUST NOT be supplemented by VBA optimization or verification procedures.</dd>
