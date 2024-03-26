@@ -27,6 +27,7 @@
   updates=""
   submissionType="IETF"
   xml:lang="en"
+  consensus="true"
   version="3">
   <front>
     <title abbrev="ndp-vba">IPv6 Voucher-Based Address Generation &amp; Verification</title>
@@ -170,10 +171,10 @@
         </t>
         <t>
           Consider the following dishonest transactions a node on a VBA-enabled network might consider:
-          <ul>
-            <li>Generating a false link-layer address. </li>
-          </ul>
         </t>
+        <ul>
+          <li>Generating a false link-layer address. </li>
+        </ul>
       </section>
 
       <section anchor="summary-generate">
@@ -216,57 +217,64 @@
         </figure>
         <t>
           The Interface Identifier (IID) for all VBAs, called a SUFFIX, embeds two important details for verification:
-          <ul>
-            <li>
+        </t>
+        <ul>
+          <li>
+            <t>
               A 16-bit 'Z' value, calculated as a bitwise complement of the XOR of the 'L' value and the second hextet
               of the hash 'H'. This calculation uses XOR with the 'H' result to ensure the same iteration count will be
               unique and provide some resistance to tracking hosts between each generated hash.
-              <ul>
-                <li>
-                  The 'L' value (also called 'iterations count' in this document) is an important value. This parameter
-                  controls how many times the KDF function is iterated to produce the resulting hash. Increasing this
-                  value increases both the work required to generate the VBA and the work required to find potential
-                  hash collisions.
-                </li>
-              </ul>
-            </li>
-            <li>
-              48 bits from the resulting hash, or 'H' value, derived from the KDF after 'L' iterations. Implementations
-              are REQUIRED to use the FIRST 8 bytes of the hash in formulating the SUFFIX value, replacing the first
-              hextet with the 'Z' value as shown in the figure.
-          </ul>
-        </t>
+            </t>
+            <ul>
+              <li>
+                The 'L' value (also called 'iterations count' in this document) is an important value. This parameter
+                controls how many times the KDF function is iterated to produce the resulting hash. Increasing this
+                value increases both the work required to generate the VBA and the work required to find potential
+                hash collisions.
+              </li>
+            </ul>
+          </li>
+          <li>
+            48 bits from the resulting hash, or 'H' value, derived from the KDF after 'L' iterations. Implementations
+            are REQUIRED to use the FIRST 8 bytes of the hash in formulating the SUFFIX value, replacing the first
+            hextet with the 'Z' value as shown in the figure.
+          </li>
+        </ul>
         <t>
           The address generation algorithm is detailed procedurally as follows:
-          <ol>
-            <li>A host connects to a VBA network and obtains Link Voucher <xref target="addenda-voucher"/> details.</li>
-            <li>The 'L' value is chosen based on (1) host preference, (2) intended difficulty, or (3) randomly.</li>
-            <li>The Link Voucher details contain instructions for which KDF to use and which seed value to use.</li>
-            <li>
+        </t>
+        <ol>
+          <li>A host connects to a VBA network and obtains Link Voucher <xref target="addenda-voucher"/> details.</li>
+          <li>The 'L' value is chosen based on (1) host preference, (2) intended difficulty, or (3) randomly.</li>
+          <li>The Link Voucher details contain instructions for which KDF to use and which seed value to use.</li>
+          <li>
+            <t>
               The KDF Salt is a variable-length CONCATENATION of a few different values. 'Raw' values indicate
               binary values, NOT hexademical string notations of the values.
-              <ul>
-                <li>
-                  The raw link-layer identifier of the network interface for which addresses are being generated.
-                  Note that since the Salt value is a variable-length string, this is NOT REQUIRED to be a MAC
-                  address, but it MUST represent the link-layer address to which the IPv6 address will be bound.
-                </li>
-                <li>The string "vba" as a big-endian value.</li>
-                <li>The raw PREFIX (subnet prefix) value. This MUST match the prefix for which the VBA will be generated.</li>
-              </ul>
-            </li>
-            <li>
+            </t>
+            <ul>
+              <li>
+                The raw link-layer identifier of the network interface for which addresses are being generated.
+                Note that since the Salt value is a variable-length string, this is NOT REQUIRED to be a MAC
+                address, but it MUST represent the link-layer address to which the IPv6 address will be bound.
+              </li>
+              <li>The string "vba" as a big-endian value.</li>
+              <li>The raw PREFIX (subnet prefix) value. This MUST match the prefix for which the VBA will be generated.</li>
+            </ul>
+          </li>
+          <li>
+            <t>
               The final address SUFFIX is computed:
-              <ul>
-                <li>The first 16 bits are a bitwise complement of an 'iterations count' value.</li>
-                <li>
-                  The least significant 48 bits are 6 sequential bytes from the result the KDF, skipping the first two
-                  bytes in the sequence.
-                </li>
-              </ul>
-            </li>
-          </ol>
-        </t>
+            </t>
+            <ul>
+              <li>The first 16 bits are a bitwise complement of an 'iterations count' value.</li>
+              <li>
+                The least significant 48 bits are 6 sequential bytes from the result the KDF, skipping the first two
+                bytes in the sequence.
+              </li>
+            </ul>
+          </li>
+        </ol>
       </section>
 
       <section anchor="summary-verify">
@@ -373,22 +381,26 @@
           <t>
             Sending nodes wishing to distribute a Link Voucher MUST first check the local link for an already-active LV. This
             entails following a process of router discovery, then only assuming LV responsibility if no LV is already present.
-            <ol>
-              <li>Send a Router Soliciation to the All Routers multicast group at FF02::2.</li>
-              <li>Wait for an LV for at least 2 seconds before sending another Soliciation.</li>
-              <li>Repeat this process 2 more times.
-                <ul>
-                  <li>If an LV is received within a Router Advertisement response, accept and use the parameters of the received LV.
-                    This condition means the sender MUST NOT send their own LV, nor should it propagate any instances of LV options.</li>
-                  <li>If no LV is received after the 3 total attempts, and...
-                    <ul>
-                      <li>the Sender IS NOT a router: the Sender's LV may be distributed on the local link as an option attached
-                        to an appropriate NDP Redirect packet.</li>
-                      <li>the Sender IS a router: the Sender may attach its LV to an appropriate NDP Router Advertisement packet.</li>
-                </ul>
-              </li>
-            </ol>
           </t>
+          <ol>
+            <li>Send a Router Soliciation to the All Routers multicast group at FF02::2.</li>
+            <li>Wait for an LV for at least 2 seconds before sending another Soliciation.</li>
+            <li>
+              <t>Repeat this process 2 more times.</t>
+              <ul>
+                <li>If an LV is received within a Router Advertisement response, accept and use the parameters of the received LV.
+                  This condition means the sender MUST NOT send their own LV, nor should it propagate any instances of LV options.</li>
+                <li>
+                  <t>If no LV is received after the 3 total attempts, and...</t>
+                  <ul>
+                    <li>the Sender IS NOT a router: the Sender's LV may be distributed on the local link as an option attached
+                      to an appropriate NDP Redirect packet.</li>
+                    <li>the Sender IS a router: the Sender may attach its LV to an appropriate NDP Router Advertisement packet.</li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ol>
           <t>
             On-link nodes responsible for an LV (also known as Voucher Bearers (VBs) -- see the VB section <xref target="bearers"/>)
             MUST respond to Router Soliciation packets. This is true regardless of  whether the VB is using a Redirect or Router
@@ -398,6 +410,7 @@
             Protecting the link from rogue LVs is crucial to securely maintain the full consensus of the local network.
             See the section on RA-Guard <xref target="bearers-vigilance"/> and LV Hijacking <xref target="security-usurp"/>
             for more details.
+          </t>
         </section>
 
         <section anchor="addenda-voucher-receivers">
@@ -451,18 +464,18 @@
         </section>
       </section>
 
-      <section anchor="addenda-voucher-summary">
+      <section anchor="addenda-summary">
         <name>ND Voucher Summary Option</name>
         <t>
         </t>
 
-        <section anchor="addenda-voucher-senders">
+        <section anchor="addenda-summary-senders">
           <name>Processing Rules for Senders</name>
           <t>
           </t>
         </section>
 
-        <section anchor="addenda-voucher-receivers">
+        <section anchor="addenda-summary-receivers">
           <name>Processing Rules for Receivers</name>
           <t>
           </t>
@@ -492,7 +505,7 @@
           <t>
             Section x of the SEND RFC <xref target="RFC3971"/> defines a
           </t>
-        </sections>
+        </section>
       </section>
 
       <section anchor="behavioral-cache">
@@ -565,21 +578,21 @@
         <!-- TODO: Insert ASCII art figure. -->
         <t>
           To further cement this optimization procedure, an example DAD collision follows.
-          <ol>
-            <li>A new network host has received Link Voucher details; the voucher specifies using PBKDF2.</li>
-            <li>The host arbitrarily selects 0xFF04 as its input link-local iterations count.</li>
-            <li>The host will iterate the PBKDF2 function through 0xFEFF.</li>
-            <li>When retrieving the PBKDF2 cipher output for 0xFF00 (L - 4) iterations, it will cache this value.</li>
-            <li>It will do the same for the next 3 iterations counts (0xFF01, 0xFF02, &amp; 0xFF03).</li>
-            <li>It will compute the final PBKDF2 round at 0xFF04 iterations, and will use the result to generate
-              a valid VBA <xref target="summary-generate"/>.</li>
-            <li>When following the DAD procedure, a collision is detected.</li>
-            <li>The host then falls immediately back to the L - 1 iterations count of 0xFF03 to generate the VBA.</li>
-            <li>This new host address is completely different and does not register a DAD collision.</li>
-            <li>The optimization has successfully removed he need to recompute the PBKDF2 algorithm up to the new
-              iterations count, saving a significant amount of time in the VBA-enabled SLAAC process.</li>
-          </ol>
         </t>
+        <ol>
+          <li>A new network host has received Link Voucher details; the voucher specifies using PBKDF2.</li>
+          <li>The host arbitrarily selects 0xFF04 as its input link-local iterations count.</li>
+          <li>The host will iterate the PBKDF2 function through 0xFEFF.</li>
+          <li>When retrieving the PBKDF2 cipher output for 0xFF00 (L - 4) iterations, it will cache this value.</li>
+          <li>It will do the same for the next 3 iterations counts (0xFF01, 0xFF02, &amp; 0xFF03).</li>
+          <li>It will compute the final PBKDF2 round at 0xFF04 iterations, and will use the result to generate
+            a valid VBA <xref target="summary-generate"/>.</li>
+          <li>When following the DAD procedure, a collision is detected.</li>
+          <li>The host then falls immediately back to the L - 1 iterations count of 0xFF03 to generate the VBA.</li>
+          <li>This new host address is completely different and does not register a DAD collision.</li>
+          <li>The optimization has successfully removed he need to recompute the PBKDF2 algorithm up to the new
+            iterations count, saving a significant amount of time in the VBA-enabled SLAAC process.</li>
+        </ol>
         <t>
           If all 5 iterations counts result in DAD collisions, then the node MUST give up and use some other
           implementation-specific course of action to contact an administrator or log a system management error.
@@ -594,7 +607,7 @@
         <t>
           Nodes encountering a duplicate address will by necessity require a different iterations count to
           generate their current address. If the node uses a 'sticky' iterations count, then it is RECOMMENDED
-          that it send a gratuitous VSR update to the LOVMA with the new count <xref target="lovma-vsr"/>.
+          that it send a gratuitous VSR update to the LOVMA with the new count <xref target="lovma-packets-vsr"/>.
         </t>
         <t>
           A discussion regarding denial of service attack vectors related to DAD in VBA networks is found in
@@ -706,7 +719,7 @@
         </t>
       </section>
 
-      <section anchor="optimizations-lovma">
+      <section anchor="optimizations-summaries">
         <name>Voucher Summary Options</name>
         <t>
         </t>
