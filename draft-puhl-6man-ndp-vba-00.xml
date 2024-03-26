@@ -232,8 +232,9 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           <li>
             <t>
               A 16-bit 'Z' value, calculated as a bitwise complement of the XOR of the 'L' value and the second hextet
-              of the hash 'H'. This calculation uses XOR with the 'H' result to ensure the same iteration count will be
-              unique and provide some resistance to tracking hosts between each generated hash.
+              of the hash 'H'. This calculation uses this XOR computation to ensure the same iterations count 'L' between
+              different KDF results will be unique and provide some resistance to tracking hosts between each generated
+              hash. This is especially true if the host locally advertises a well-known or 'sticky' iterations count [<xref target="lovma-packets-vsr"/>].
             </t>
             <ul>
               <li>
@@ -254,13 +255,13 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
           The address generation algorithm is detailed procedurally as follows:
         </t>
         <ol>
-          <li>A host connects to a VBA network and obtains Link Voucher <xref target="addenda-voucher"/> details.</li>
+          <li>A host connects to a VBA network and obtains Link Voucher [<xref target="addenda-voucher"/>] details.</li>
           <li>The 'L' value is chosen based on (1) host preference, (2) intended difficulty, or (3) randomly.</li>
-          <li>The Link Voucher details contain instructions for which KDF to use and which seed value to use.</li>
+          <li>The Link Voucher details contain instructions for which KDF to use and which 128-bit seed value to use.</li>
           <li>
             <t>
-              The KDF Salt is a variable-length CONCATENATION of a few different values. 'Raw' values indicate
-              binary values, NOT hexademical string notations of the values.
+              The KDF Salt is a variable-length CONCATENATION of a few different values, in the order specified
+              below. 'Raw' values indicate binary values, NOT hexademical string notations of the values.
             </t>
             <ul spacing="compact">
               <li>
@@ -268,7 +269,7 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
                 Note that since the Salt value is a variable-length string, this is NOT REQUIRED to be a MAC
                 address, but it MUST represent the link-layer address to which the IPv6 address will be bound.
               </li>
-              <li>The string "vba" as a big-endian value.</li>
+              <li>The string "vba".</li>
               <li>The raw PREFIX (subnet prefix) value. This MUST match the prefix for which the VBA will be generated.</li>
             </ul>
           </li>
@@ -277,14 +278,21 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
               The final address SUFFIX is computed:
             </t>
             <ul spacing="compact">
-              <li>The first 16 bits are a bitwise complement of an 'iterations count' value.</li>
               <li>
-                The least significant 48 bits are 6 sequential bytes from the result the KDF, skipping the first two
+                The first 16 bits are the bitwise complement of an XOR between the iterations count 'L' and the
+                second hextet of the generated KDF hash.
+              </li>
+              <li>
+                The least significant 48 bits are 6 sequential bytes from the KDF hash, skipping the first two
                 bytes in the sequence.
               </li>
             </ul>
           </li>
         </ol>
+        <t>
+          See [<!-- appendix ref -->] for sample code in the C programming language which might better
+          demonstrate VBA address generation.
+        </t>
       </section>
 
       <section anchor="summary-verify">
@@ -321,15 +329,15 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
  |   |         |            |
  |   |  +~~~~~~V~~~~~~~~~~~~+~~~~~~~~~~~+
  `---+->| H := LV.K(        | [rebuild  |
- (3) |  |   L := iters(B),  |  addr B]  |
+ (3) |  |   L := Z'(B),     |  addr B]  |
      `--+-> LV.seed,   v----'           |
         |   makeSalt(MAC, prefix(B))    |
         | );                            |
         +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
             |
-            |      +~~~~~~~~~~~~~~~~~~~~~~~+
-            `----> | suffix(Z(L), H) === B |
-                   +~~~~~~~~~~~~~~~~~~~~~~~+
+            |      +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+            `----> | [prefix(B) || suffix(Z(L, H), H)] === B |
+                   +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
                (4)  {????}
                      |  |
   DROP <-- false <---'  '---> true --> ACCEPT/CACHE
@@ -337,6 +345,24 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
             ]]>
           </artwork>
         </figure>
+        <t>
+          In the above figure, the "Z'" function returns the iterations count embedded in Host B's address.
+          This function is the opposite of 'Z'; it uses an input address to determine 'L' rather than using
+          an input 'L' to determine an output hextet. Despite the different inputs, the naming alludes to the
+          opposite purposes for each function.
+        </t>
+        <dl newline="true">
+          <dt>Z(L, H) = ~(L ^ H[2..3])</dt>
+          <dd>Returns a hextet to insert into a generated address. A bitwise complement of an iterations count
+            XOR'd to the second hextet of an output KDF hash 'H'.</dd>
+          <dt>Z'(B) = ~(B[8..9] ^ B[10..11])</dt>
+          <dd>Returns an iterations count derived from a full IPv6 address. In this case, 'B[8..9]' is equal to
+            the length and position of the hextet calculated by the function 'Z' above.</dd>
+        </dl>
+        <t>
+          See [<!-- appendix ref -->] for sample code in the C programming language which might better
+          demonstrate VBA address verification.
+        </t>
       </section>
 
       <section anchor="summary-interfaces">
