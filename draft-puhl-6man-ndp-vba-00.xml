@@ -227,24 +227,24 @@ Address composition:
     +------ ~ ------+-------------+---------------------+
 
 ... where:
-    PREFIX = The 64-bit subnet prefix. If the prefix is shorter
-              than 64 bits, the rest of the 64-bit field MUST be
-              initialized to 0.
+    PREFIX = The 64-bit subnet prefix. If the subnet length is
+              shorter than 64 bits, the rest of the 64-bit field
+              MUST be initialized to 0.
     SUFFIX = The first 8 bytes from the result of a Key Derivation
               Function (KDF) 'K' iterated 'L' times. The leftmost
-              hextet is replaced by the bitwise complement of 'Z'.
+              hextet is replaced by 'Z'.
 
 Formulas:
-H      = K(L, Key, Salt)
-         |---> K    = A KDF specified by the Link Voucher.
-         |---> L    = A random, host-selected 'iterations count'.
-         |---> Key  = The 128-bit Link Voucher seed value.
-         `---> Salt = [LLID] || 'v' || 'b' || 'a' || [PREFIX]
+    H  =  K(L, Key, Salt)
+          |---> K    = A KDF specified by the Link Voucher.
+          |---> L    = A random, host-selected 'iterations count'.
+          |---> Key  = The 128-bit Link Voucher seed value.
+          `---> Salt = [LLID] || 'v' || 'b' || 'a' || [PREFIX]
 
-Z      = ~(L ^ H[2..3])
+    Z  =  ~(L ^ H[2..3])
 
-SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
-                        `--> (using 0-based indexing)
+    SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
+                            `--> (using 0-based indexing)
             ]]>
           </artwork>
         </figure>
