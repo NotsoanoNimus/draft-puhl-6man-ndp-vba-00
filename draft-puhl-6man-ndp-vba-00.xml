@@ -503,8 +503,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
   |                                                               |
   |                        64-bit Timestamp                       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                                                               |
-  |                        64-bit VoucherID                       |
+  |                        32-bit VoucherID                       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |                                                               |
   |                                                               |
@@ -694,7 +693,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |      Type     |     Length    | IEM |        Reserved         |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                        64-bit VoucherID                       |
+  |                        32-bit VoucherID                       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             ]]>
           </artwork>
@@ -721,7 +720,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           </dd>
           <dt>Reserved</dt><dd>A 13-bit field reserved for future use. This MUST be initialized to zero by the sender and MUST
             be ignored by the receiver.</dd>
-          <dt>VoucherID</dt><dd>The 64-bit ID of the statefully cached Link Voucher on the sending interface.</dd>
+          <dt>VoucherID</dt><dd>The 32-bit ID of the statefully cached Link Voucher on the sending interface.</dd>
         </dl>
 
         <section anchor="addenda-summary-senders">
@@ -1148,6 +1147,10 @@ COMPUTE & CACHE:
         <name>Privacy of Link-Layer Bindings</name>
         <t>
         </t>
+        <t>
+          The Appendix of this document contains a detailed statistical evaluation of address randomness;
+          see <xref target="appendix-randomness"/>.
+        </t>
       </section>
 
       <section anchor="security-usurp">
@@ -1298,13 +1301,79 @@ COMPUTE & CACHE:
       </references> -->
     </references>
     
-    <section anchor="appendices">
-      <name>Appendices</name>
+    <section anchor="appendix-a">
+      <name>Appendix A</name>
+      <t></t>
+    </section>
 
-      <section anchor="appendices-a">
-        <name>Appendix A</name>
+    <section anchor="appendix-randomness">
+      <name>Validating Address Randomness</name>
+      <t>
+        The following sections evaluate the statistical randomness of generated VBAs on the basis of a few
+        noted conditions. All results were acquired through use of the Dieharder suite of PRNG tests
+        <!-- ref -->.
+      </t>
+      <t>
+        Each test procedurally selects starting values and iterates the "PBKDF2 with SHA-256" KDF with a static
+        multiplier of 256. The 'variable' condition will then be mutated pseudo-randomly each time all 2^16 possible
+        iterations counts have been calculated with the KDF.
+      </t>
+      <t>
+        Each test simulates 2^16 variations, for a total of 2^32 outputs (2^16 variations * 2^16 iterations per
+        variation). VBA address generation procedures calculating these inputs write to a test file that records the
+        address SUFFIXES as 64-bit decimal integers. That test file is then ultimately fed to Dieharder to run PRNG
+        tests and thus generate these results.
+      </t>
+
+      <section>
+        <name>Variable MAC, Fixed Seed, Fixed Subnet (VFF)</name>
         <t>
+          Per every set of 2^16 iterations counts, the input link-layer address (MAC in this case) is set to a new
+          pseudo-random value. This test shows the random distribution of VBAs on a single subnet with an unchanging
+          Link Voucher seed value, among neighbors with unique MAC addresses.
         </t>
+        <t>
+          This test shows the randomness of address derivations between on-link neighbors.
+        </t>
+        <t>
+          Fixed LV Seed Value: 0x5DD55190_0FA2A986_D3DAB5D2_94B97B63<br />
+          Fixed Subnet Prefix: 2001:DB8:C001:5EED
+        </t>
+        <!-- TODO: Data -->
+      </section>
+
+      <section>
+        <name>Fixed MAC, Variable Seed, Fixed Subnet (FVF)</name>
+        <t>
+          Per every set of 2^16 iterations counts, the input Link Voucher Seed is set to a new pseudo-random value.
+          This test shows the random distribution of VBAs from a single node on a single subnet with a mutating seed.
+        </t>
+        <t>
+          This test shows the randomness of address derivations between seeds for the same node on the same subnet.
+        </t>
+        <t>
+          Fixed MAC address: FF-1B-83-8B-BC-C0<br />
+          Fixed Subnet Prefix: FE80::
+        </t>
+        <!-- TODO: Data -->
+      </section>
+
+      <section>
+        <name>Fixed MAC, Fixed Seed, Variable Subnet (FFV)</name>
+        <t>
+          Per every set of 2^16 iterations counts, the input subnet PREFIX is mutated to a new pseudo-random value.
+          This test shows the random distribution of VBAs from a single node on multiple varying subnet prefixes, with
+          a fixed seed value.
+        </t>
+        <t>
+          This test shows the randomness of address derivations for the same node on different subnets, using the same
+          Link Voucher seed.
+        </t>
+        <t>
+          Fixed MAC address: 6A-1E-56-45-E6-BA<br />
+          Fixed LV Seed Value: 0x61E1B40E_3DB48225_5A03DCB5_33068708
+        </t>
+        <!-- TODO: Data -->
       </section>
     </section>
  </back>
