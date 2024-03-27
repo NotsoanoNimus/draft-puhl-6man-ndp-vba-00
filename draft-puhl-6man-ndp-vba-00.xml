@@ -624,11 +624,11 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
             </artwork>
           </figure>
           <t>
-            The list of default KDF Algorithm Settings options is given below.
+            The list of default KDF Algorithm Settings choices is given below.
           </t>
           <!-- Might it be better to use ASN1 notation here or DER to convey some object details? -->
           <dl newline="true">
-            <dt>PBKDF2</dt>
+            <dt>PBKDF2_SHA256</dt>
             <dd>
               <t>
                 The Password-Based Key Derivation Function (PBKDF2) is defined in Section 5.2 of <xref target="RFC8018"/>.
@@ -637,8 +637,8 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
                 universality, and ease of implementation.
               </t>
               <t>
-                This specification explicitly uses PBKDF2 with SHA-256 as its PRF, so implementations using this Type
-                MUST use SHA-256.
+                This specification explicitly uses PBKDF2 with SHA-256 as its PRF: implementations using this Type MUST
+                use SHA-256 as the PBKDF2 Pseudo-Random Function.
               </t>
               <dl newline="true" spacing="compact">
                 <dt>Type</dt><dd>1</dd>
@@ -658,9 +658,79 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
             </dd>
             <dt>Argon2d</dt>
             <dd>
+              <t>
+                The Argon2 algorithm is specified in Section 3 of <xref target="RFC9106"/>. It is a Memory-bound cryptographic
+                function which will ideally provide less disparate address computation speeds than CPU-bound algorithms like
+                PBKDF2. Implementations SHOULD always prefer to use this Type over others, provided all participating network
+                devices have Argon2 support.
+              </t>
+              <t>
+                This specification explicitly opts to use Argon2d instead of Argon2i or Argon2id because the generation of
+                VBAs does not require any resistance to side-channel attacks. The in-memory data used by the KDF SHOULD NOT be
+                treated as secret for any reason. All Implementations with this Type MUST specifically use Argon2d.
+              </t>
+              <t>
+                The iterations count 'L' value is used as the 't' input for Argon2d computations. The Argon2 't' parameter
+                indicates the number of passes and is used to increase the algorithm's running time regardless of MemorySize.
+              </t>
+              <t>
+                The Argon2 parameters for Secret Value 'K' and Associated Data 'X' MUST NOT be used or distributed by the LV.
+                The Tag Length 'T' for Argon2d MUST be set to 32 and MUST NOT be changed.
+              </t>
+              <dl newline="true" spacing="compact">
+                <dt>Type</dt><dd>10</dd>
+                <dt>Length</dt><dd>3</dd>
+                <dt>Value</dt>
+                <dd>
+                  <dl newline="true" spacing="compact">
+                    <dt>Parallelism</dt>
+                    <dd>
+                      A 24-bit integer determining how many degrees of parallelism (lanes) are allowed to run during KDF
+                      computation. This value SHALL NOT be set to 0. Receivers MUST consider Parallelism values of 0 to
+                      automatically indicate a Parallelism of 1.
+                    </dd>
+                    <dd>Padding</dd>
+                    <dt>
+                      8 bits (one octet) of padding initialized to zero. Senders MUST set this to 0. Receivers MUST ignore
+                      this padding.
+                    </dt>
+                    <dt>MemorySize</dt>
+                    <dd>
+                      A 32-bit integer representing the number of kibibytes used in the KDF computation. This value SHOULD be
+                      carefully controlled and take into consideration the computing resources across the link on which the LV
+                      will be distributed. This value MUST be a minimum of 8*Parallelism and MUST NOT be set to 0. Receivers MUST
+                      adjust the minimum MemorySize accordingly if the value does not meet the minimum threshold for the ACTUAL
+                      degree of parallelism being used.
+                    </dd>
+                  </dl>
+                </dd>
+              </dl>
             </dd>
             <dt>Scrypt</dt>
             <dd>
+              <t>
+                The Scrypt KDF algorithm is specified in Section 6 of <xref target="RFC7914"/>. It is a Memory-bound cryptographic
+                function which, similar to Argon2, ideally providing less disparate address computation durations than CPU-bound
+                key derivation techniques.
+              </t>
+              <t>
+                The iterations count 'L' value is used in part for both the 'N' and 'r' inputs for Scrypt computations. The Scrypt
+                'N' parameter indicates the CPU/Memory cost of running the computation. This value MUST ultimately be a power of 2.
+                The 'r' Scrypt parameter indicates the desired block size. Actual values are computed by the following conversion:
+              </t>
+              <t>
+                r (Parallelism) := MAX{ 16, (L &amp; 0xFF00) &gt;&gt; 4 }<br />
+                N (Cost) := MAX{ 2, 1 &lt;&lt; (L &amp; 0x00FF) }
+              </t>
+              <t>
+                The Scrypt parameter 'dkLen' (derived key length) MUST always be set to 32 and MUST NOT be changed.
+              </t>
+              <dl newline="true" spacing="compact">
+                <dt>Type</dt><dd>10</dd>
+                <dt>Length</dt><dd>3</dd>
+                <dt>Value</dt>
+                <dd>There are no extra parameters to control for Scrypt difficulty.</dd>
+              </dl>
             </dd>
           </dl>
         </section>
@@ -1267,7 +1337,10 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
+        <!-- Default KDF Definitions -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9106.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7914.xml"/>
       </references>
       <references>
         <name>Informative References</name>
