@@ -72,6 +72,17 @@
   <middle>
     <section anchor="intro">
       <name>Introduction</name>
+      <!--
+        RFC 8018:
+            Another approach to password-based cryptography is to construct key
+            derivation techniques that are relatively expensive, thereby
+            increasing the cost of exhaustive search.  One way to do this is to
+            include an iteration count in the key derivation technique,
+            indicating how many times to iterate some underlying function by
+            which keys are derived.  A modest number of iterations (say, 1000) is
+            not likely to be a burden for legitimate parties when computing a
+            key, but will be a significant burden for opponents.
+      -->
       <t>
         Voucher-Based Addressing (VBA) offers an alternative solution to
         the address ownership problem, enables extensible and private unicast address generation, and prevents
@@ -483,29 +494,29 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
    0                   1                   2                   3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |    Length     |   Pad Length  |   Expiration  |
+  |     Type      |    Length     |   Pad Length  |    Reserved   |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |                            Reserved                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        32-bit Expiration                      |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
   |                        64-bit Timestamp                       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
   |                        64-bit VoucherID                       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |                                                               |
+  |                                                               |
   |                      128-bit Voucher Seed                     |
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                                                               |
- ...                     TLV Algorithm Settings                  ...
   |                                                               |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                                                               |
- ...                     DER-encoded Public Key                  ...
- ...                          & Signature                        ...
-  |                                                               |
+  >                      TLV Algorithm Settings                   <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                                                               |
- ...                           Padding                           ...
-  |                                                               |
+  >                      DER-encoded Public Key                   <
+  >                            & Signature                        <
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  >                             Padding                           <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             ]]>
           </artwork>
@@ -549,13 +560,13 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
             </li>
           </ol>
           <t>
-            On-link nodes responsible for an LV (also known as Voucher Bearers (VBs) -- see the VB section <xref target="bearers"/>)
-            MUST respond to Router Soliciation packets. This is true regardless of  whether the VB is using a Redirect or Router
+            On-link nodes responsible for an LV (also known as Voucher Bearers (VBs) -- see <xref target="bearers"/>)
+            MUST respond to Router Soliciation packets. This is true regardless of whether the VB is using a Redirect or Router
             Advertisement to distribute its LV.
           </t>
           <t>
             Protecting the link from rogue LVs is crucial to securely maintain the full consensus of the local network.
-            See the section on RA-Guard <xref target="bearers-vigilance"/> and LV Hijacking <xref target="security-usurp"/>
+            See <xref target="bearers-vigilance"/> on RA-Guard and <xref target="security-usurp"/> about LV Hijacking
             for more details.
           </t>
         </section>
@@ -564,25 +575,87 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           <name>Processing Rules for Receivers</name>
           <!-- TODO -->
           <t>
-            Receiving nodes MUST statefully maintain and update all LV information per-link, if and only if the received LV is
-            successfully verified according to its cryptographic signature.
+            Receiving nodes MUST statefully maintain and update all LV information per interface, if and only if the received LV
+            is successfully verified according to its cryptographic signature.
           </t>
           <t>A Link Voucher option appearing with any packet except NDP Router Advertisements or NDP Redirects MUST be ignored.</t>
           <t>
-            Nodes acting as authorized Voucher Bearers <xref target="bearers"/> MUST disregard any received LV options on the links
-            for which they are already the responsible VB.
+            Nodes acting as authorized Voucher Bearers MUST disregard any received LV options on the links for which they are
+            already the responsible VB. When VBs interact with VBAs, whether generating or verifying, they MUST use their own
+            distributed LV for the interacting interface.
           </t>
         </section>
 
         <section anchor="addenda-voucher-kdfs">
-          <name>Algorithm Settings</name>
+          <name>Algorithm Settings Options</name>
+          <t>
+            Section 5 of <xref target="RFC8018"/> specifies the definition of a Key Derivation Function (KDF):
+          </t>
+          <blockquote>
+               A key derivation function produces a derived key from a base key and
+               other parameters.  In a password-based key derivation function, the
+               base key is a password, and the other parameters are a salt value and
+               an iteration count...
+          </blockquote>
           <t>
             This section will discuss the default algorithms and KDF types that SHOULD be packaged with basic implementations
-            of this specification.
+            of this specification. Future versions or extensions of this document MAY add new Key Derivation Function algorithms.
           </t>
+          <t>
+            Any Algorithm Setting Type not specified in this document or in future versions MUST be ignored by receivers.
+          </t>
+          <t>
+            All "TLV Algorithm Settings" values are formatted as Type-Length-Value objects, where Type is a numeric identifier
+            uniquely representing a chosen KDF, Length is the width of the total TLV Algorithm Settings in units of 4 octets,
+            and Value is a compact data format zero-padded to the nearest 32-bit boundary. Receivers MUST always ignore padding
+            and senders MUST always initialize padded areas to zero.
+          </t>
+          <figure>
+            <name>Structure of an Algorithm Settings Option</name>
+            <artwork type="ascii-art" name="algorithmSettingsOption.txt">
+              <![CDATA[
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |              Type             |             Length            |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  >                             Value                             <
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+              ]]>
+            </artwork>
+          </figure>
+          <t>
+            The list of default KDF Algorithm Settings options is given below.
+          </t>
+          <!-- Might it be better to use ASN1 notation here or DER to convey some object details? -->
           <dl newline="true">
             <dt>PBKDF2</dt>
             <dd>
+              <t>
+                The Password-Based Key Derivation Function (PBKDF2) is defined in Section 5.2 of <xref target="RFC8018"/>.
+                It is a CPU-bound cryptographic function which might incur significant computation speed disparities
+                between embedded systems and high-performance hardware. It is included primary for portability,
+                universality, and ease of implementation.
+              </t>
+              <t>
+                This specification explicitly uses PBKDF2 with SHA-256 as its PRF, so implementations using this Type
+                MUST use SHA-256.
+              </t>
+              <dl newline="true" spacing="compact">
+                <dt>Type</dt><dd>1</dd>
+                <dt>Length</dt><dd>2</dd>
+                <dt>Value</dt>
+                <dd>
+                  <dl newline="true" spacing="compact">
+                    <dt>ITERATIONS_FACTOR</dt>
+                    <dd>
+                      A 16-bit integer representing the multiplier of an input KDF iterations count, specified in big-endian
+                      format. This value MUST be greater than 0; receivers of 0 values MUST use 1 instead. This factor can be
+                      used by a Link Voucher to automatically scale the 'difficulty' of the PBKDF2 KDF on the network.
+                    </dd>
+                  </dl>
+                </dd>
+              </dl>
             </dd>
             <dt>Argon2d</dt>
             <dd>
@@ -607,7 +680,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
       </section>
 
       <section anchor="addenda-summary">
-        <name>ND Voucher Summary Option</name>
+        <name>Voucher Summary Option</name>
         <t>
           The Voucher Summary (VS) option is included with Neighbor Solicitation and Advertisement packets to hint to
           recipients which active Link Voucher ID is being statefully used on the target or source interface.
@@ -1191,6 +1264,7 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/>
       </references>
       <references>
         <name>Informative References</name>
