@@ -257,11 +257,12 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
               A 16-bit 'Z' value, calculated as a bitwise complement of the XOR of the 'L' value and the second hextet
               of the hash 'H'. This calculation uses this XOR computation to ensure the same iterations count 'L' between
               different KDF results will be unique and provide some resistance to tracking hosts between each generated
-              hash. This is especially true if the host locally advertises a well-known or 'sticky' iterations count [<xref target="lovma-packets-vsr"/>].
+              hash. This is especially true if the host locally advertises a well-known or 'sticky' iterations count
+              (<xref target="lovma-packets-vsr"/>).
             </t>
             <ul>
               <li>
-                The 'L' value (also called 'iterations count' in this document) is an important value. This parameter
+                The 'L' value, also called 'iterations count' in this document, is an important value. This parameter
                 controls how many times the KDF function is iterated to produce the resulting hash. Increasing this
                 value increases both the work required to generate the VBA and the work required to find potential
                 hash collisions.
@@ -333,7 +334,14 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
         <t>
           VBA address verification MUST only performed during the Address Resolution phase of an NDP exchange, where
           enabled on the local interface. Verifying an address entails reconstructing the address generation procedure
-          run by the target node and ensuring the produced address is equivalent to the one solicited.
+          run by the Target Node and ensuring the produced address is equivalent to the one solicited by the Client Node.
+        </t>
+        <t>
+          The Target Node address being resolved can be any unicast address, but MUST be for an on-link prefix.
+        </t>
+        <t>
+          The following figure shows how VBA verification integrates into the NDP Address Resolution process. Node 'A' is
+          the Client Node and node 'B' is the Target Node.
         </t>
         <figure>
           <name>The Voucher-Based Address Verification Procedure</name>
@@ -368,8 +376,8 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
         <t>
           The Link Voucher 'LV' MUST always be used from the state preserved on the verifying interface. Nodes
           SHALL NOT request the Link Vouchers of others for any reason. If the verification procedure fails due
-          to a LV mismatch between hosts A and B, then there is either (1) a synchronization problem or (2)
-          multiple on-link vouchers being distributed.
+          to an LV mismatch between nodes A and B, then there is most likely either (1) a synchronization problem
+          or (2) an issue with multiple same-link LVs being distributed.
         </t>
         <t>
           In the above figure, the "Z'" (Z-prime) function returns the iterations count embedded in Host B's address.
@@ -380,13 +388,13 @@ SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
         <dl newline="true">
           <dt>Z(L, H) = ~(L ^ H[2..3])</dt>
           <dd>Returns a hextet to insert into a generated address. A bitwise complement of an iterations count
-            XOR'd to the second hextet of an output KDF hash 'H'.</dd>
+            XOR'd with the second hextet of an output KDF hash 'H'.</dd>
           <dt>Z'(B) = ~(B[8..9] ^ B[10..11])</dt>
           <dd>Returns an iterations count derived from a full IPv6 address. In this case, 'B[8..9]' is equal to
             the length and position of the hextet calculated by the function 'Z' above.</dd>
         </dl>
         <t>
-          See the figure below for a visualization of computing Z' from a Voucher-Based Address.
+          See the figure below for a visualization of calculating Z' from a Voucher-Based Address.
         </t>
         <figure>
           <name>Extracting the Embedded Iterations Count (Z')</name>
@@ -401,12 +409,17 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
       +------ ~ ------+----+----+----+----+-- ~ --+
                       \________/\________/
                            |         |
-                        B[8..9]  B[10..11]
+                   Z or B[8..9]  B[10..11]
 
     Z'  =  L  =  NOT( B[8..9] XOR B[10..11] )
+                  or NOT( SUFFIX[0..1] XOR SUFFIX[2..3] )
             ]]>
           </artwork>
         </figure>
+        <t>
+          Z' is necessarily computed for each VBA verification because the 'L' value is a required component to
+          reconstruct the solicited address of the Target Node.
+        </t>
         <t>
           See [<!-- appendix ref -->] for sample code in the C programming language which might better
           demonstrate VBA address verification.
@@ -416,8 +429,8 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
       <section anchor="summary-interfaces">
         <name>Interface-level Configurations</name>
         <t>
-          This section outlines different interface-level configurations and options which may or may not be
-          required in VBA implementations.
+          This section outlines different interface-level configurations and options which MUST be available in
+          any implementation of this specification.
         </t>
 
         <section anchor="summary-interfaces-state">
@@ -427,7 +440,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
             REQUIRED to store the full state of the most current, validated Link Voucher. If a Link Voucher is not
             available on-link, then no stored LV state is required and the node MUST enter the Address Awareness
             Disabled state (see the next section). If a LV subsequently becomes available, the node MAY choose to
-            enter a different state/mode based on the implementation.
+            enter a different state or IEM based on the implementation.
           </t>
         </section>
 
@@ -436,14 +449,13 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           <t>
             Per-interface modes (IEMs) are able to granularly dictate the local NDP behaviors related to VBAs.
             This flexibility in per-interface behavior grants VBAs more transition and adoption capabilities.
-            A tiny state machine diagram would represent all of these states as being transitionable to any
-            other.
+            A tiny state machine diagram would depict all of these states as being transitionable to any of
+            the others.
           </t>
           <t>
             Implementations MUST allow nodes to independently opt into any one of the following IEMs for EACH
             of their local interfaces:
           </t>
-
           <dl newline="true">
             <dt>AAD - Address Awareness Disabled</dt>
             <dd>The VBA-aware interface MUST NOT generate or verify any addresses, regardless of the incoming
@@ -485,7 +497,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
         <name>Link Voucher Option</name>
         <t>
           The Link Voucher (LV) option specifies the address generation (and consequent verification)
-          parameters which on-link hosts should agree upon when generating their addresses.
+          parameters which on-link hosts MUST agree upon when generating or verifying local VBAs.
         </t>
         <figure>
           <name>Structure of the NDP Link Voucher option</name>
@@ -510,7 +522,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
   |                      128-bit Voucher Seed                     |
   |                                                               |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  >                      TLV Algorithm Settings                   <
+  >                       TLV Algorithm Type                      <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   >                      DER-encoded Public Key                   <
   >                            & Signature                        <
@@ -586,7 +598,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
         </section>
 
         <section anchor="addenda-voucher-kdfs">
-          <name>Algorithm Settings Options</name>
+          <name>Algorithm Type Options</name>
           <t>
             Section 5 of <xref target="RFC8018"/> specifies the definition of a Key Derivation Function (KDF):
           </t>
@@ -601,17 +613,17 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
             of this specification. Future versions or extensions of this document MAY add new Key Derivation Function algorithms.
           </t>
           <t>
-            Any Algorithm Setting Type not specified in this document or in future versions MUST be ignored by receivers.
+            Any Algorithm Type option not specified in this document or in future versions MUST be ignored by receivers.
           </t>
           <t>
-            All "TLV Algorithm Settings" values are formatted as Type-Length-Value objects, where Type is a numeric identifier
-            uniquely representing a chosen KDF, Length is the width of the total TLV Algorithm Settings in units of 4 octets,
+            Any TLV Algorithm Type choice is formatted as a Type-Length-Value object, where Type is a numeric identifier
+            uniquely representing a chosen KDF, Length is the width of the total TLV Algorithm Type in units of 4 octets,
             and Value is a compact data format zero-padded to the nearest 32-bit boundary. Receivers MUST always ignore padding
             and senders MUST always initialize padded areas to zero.
           </t>
           <figure>
-            <name>Structure of an Algorithm Settings Option</name>
-            <artwork type="ascii-art" name="algorithmSettingsOption.txt">
+            <name>Structure of an Algorithm Type Option</name>
+            <artwork type="ascii-art" name="algorithmOption.txt">
               <![CDATA[
    0                   1                   2                   3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -624,7 +636,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
             </artwork>
           </figure>
           <t>
-            The list of default KDF Algorithm Settings choices is given below.
+            The list of default KDF Algorithm Type choices is given below.
           </t>
           <!-- Might it be better to use ASN1 notation here or DER to convey some object details? -->
           <dl newline="true">
@@ -723,13 +735,15 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
                 N (Cost) := MAX{ 2, 1 &lt;&lt; (L &amp; 0x00FF) }
               </t>
               <t>
-                The Scrypt parameter 'dkLen' (derived key length) MUST always be set to 32 and MUST NOT be changed.
+                The Scrypt parameter 'dkLen' (derived key length) MUST always be set to 32 and MUST NOT differ between
+                implementations. The Parallelization parameter 'p' MUST always be set to 1 and MUST NOT differ between
+                implementations.
               </t>
               <dl newline="true" spacing="compact">
-                <dt>Type</dt><dd>10</dd>
-                <dt>Length</dt><dd>3</dd>
+                <dt>Type</dt><dd>20</dd>
+                <dt>Length</dt><dd>1</dd>
                 <dt>Value</dt>
-                <dd>There are no extra parameters to control for Scrypt difficulty.</dd>
+                <dd>There are no extra parameters to control for the Scrypt Algorithm Type option.</dd>
               </dl>
             </dd>
           </dl>
@@ -790,19 +804,65 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           </dd>
           <dt>Reserved</dt><dd>A 13-bit field reserved for future use. This MUST be initialized to zero by the sender and MUST
             be ignored by the receiver.</dd>
-          <dt>VoucherID</dt><dd>The 32-bit ID of the statefully cached Link Voucher on the sending interface.</dd>
+          <dt>VoucherID</dt><dd>The 32-bit ID of a valid Link Voucher retained on the sending interface.</dd>
         </dl>
 
         <section anchor="addenda-summary-senders">
           <name>Processing Rules for Senders</name>
           <t>
+            Senders SHOULD always include this option with all NDP Neighbor Solicitations or Advertisements. When a valid,
+            unexpired LV is NOT currently available on the sending interface, senders MUST set the IEM to AAD mode and initialize
+            the VoucherID to 0.
+          </t>
+          <t>
+            The IEM value MUST be accurately set to the current IEM of the sending interface. The 32-bit VoucherID field MUST
+            be equal to the cached Link Voucher ID for the sending interface.
           </t>
         </section>
 
         <section anchor="addenda-summary-receivers">
           <name>Processing Rules for Receivers</name>
           <t>
+            The VS option is NOT REQUIRED and SHALL NOT become required at any future time. Any NDP packets not including it MUST
+            be treated as they normally would by the receiver's IEM and other processes. The same is true for VS options which are
+            'ignored' due to incorrect formatting or some other validation decision.
           </t>
+          <t>
+            If the receiver's IEM is AAD, the VS option MUST be ignored.
+          </t>
+          <t>
+            Processing of valid VS options is affected by which NDP packet types they are attached to:
+          </t>
+          <dl newline="true">
+            <dt>Neighbor Solicitations</dt>
+            <dd>
+              The receiving interface MUST disregard the NS if there is a non-zero VoucherID present and it does not match the
+              ID of the active Link Voucher of the receiving interface. To 'disregard' means to not respond to the NS at all.
+            </dd>
+            <dt>Neighbor Advertisements</dt>
+            <dd>
+              <t>
+                Processing affects VBA verification procedures on the receiving interface based on the receiver's IEM.
+              </t>
+              <t>
+                Receivers MUST first inspect the IEM field to acquire the mode of the sending interface. If the IEM indicates an
+                AAD mode at the sender, the receiver MUST behave according to their own IEM:
+              </t>
+              <dl newline="true" spacing="compact">
+                <dt>AAD</dt><dd>Ignore the VS option entirely.</dd>
+                <dt>AGO</dt><dd>Ignore the VS option since VBA verification is not being performed anyway.</dd>
+                <dt>AGV</dt><dd>Drop the packet. Do not cache the neighbor's details. Completely deny them.</dd>
+                <dt>AGVL</dt><dd>Regard the neighbor as Unsecured and skip the VBA verification process.</dd>
+              </dl>
+              <t>
+                If the VoucherID field is initialized to zero, the VS option MUST be ignored. If the VoucherID value does not match
+                the ID of the active Link Voucher on the receiving interface, the VS option MUST be ignored. Otherwise, processing
+                proceeds to VBA verification per the receiver's IEM.
+              </t>
+            </dd>
+            <dt>Any other NDP packet types</dt>
+            <dd>The receiver MUST ignore the VS option.</dd>
+          </dl>
         </section>
       </section>
     </section>
@@ -810,11 +870,15 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
     <section anchor="behavioral">
       <name>Behavioral Neighbor Discovery Changes</name>
       <t>
+        This section describes the requirements and implications of VBAs with regard to ordinary NDP. Simple
+        amendments to NDP are necessary to secure the Address Resolution process.
       </t>
 
       <section anchor="behavioral-send">
         <name>Changes Adopted from SEND</name>
         <t>
+          A few changes in NDP are adopted from the SEND specification <xref target="RFC3971"/> and applied to
+          integrate with VBA functionality. This is done for both compatibility and protocol robustness.
         </t>
 
         <section anchor="behavioral-send-nonce">
@@ -868,7 +932,8 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           </t>
           <t>
             If the sending neighbor is already in the receiver's neighbor cache, then the receiver SHOULD
-            NOT verify the address of the sender.
+            NOT verify the address of the sender. The cache MAY be refreshed if the link-layer address bindings
+            have not changed for the sender's cached address.
           </t>
           <t>
             As stated in this document's introduction <xref target="intro"/>,
@@ -1349,7 +1414,6 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7527.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>
-        <!-- key-derivation crypto resources -->
       </references>
       <!-- <references>
         <name>Informative References</name>
