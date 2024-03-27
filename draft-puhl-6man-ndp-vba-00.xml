@@ -96,7 +96,7 @@
       </t>
 
       <section anchor="intro-binding">
-        <name>Link-Layer Bindings &amp; Controversies</name>
+        <name>Link-Layer Binding Considerations</name>
         <t>
         </t>
       </section>
@@ -577,25 +577,20 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
         <section anchor="addenda-voucher-kdfs">
           <name>Algorithm Settings</name>
           <t>
+            This section will discuss the default algorithms and KDF types that SHOULD be packaged with basic implementations
+            of this specification.
           </t>
-
-          <section anchor="addenda-voucher-kdfs-pbkdf2">
-            <name>PBKDF2</name>
-            <t>
-            </t>
-          </section>
-
-          <section anchor="addenda-voucher-kdfs-argon2d">
-            <name>Argon2d</name>
-            <t>
-            </t>
-          </section>
-
-          <section anchor="addenda-voucher-kdfs-scrypt">
-            <name>Scrypt</name>
-            <t>
-            </t>
-          </section>
+          <dl newline="true">
+            <dt>PBKDF2</dt>
+            <dd>
+            </dd>
+            <dt>Argon2d</dt>
+            <dd>
+            </dd>
+            <dt>Scrypt</dt>
+            <dd>
+            </dd>
+          </dl>
         </section>
 
         <section anchor="addenda-voucher-signatures">
@@ -696,7 +691,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
       </section>
 
       <section anchor="behavioral-cache">
-        <name>Protecting the ND Cache</name>
+        <name>Protecting the Neighbor Cache</name>
         <t>
           The primary verification goal of VBAs results in a symmetric computation that can be costly for
           low-power nodes or other embedded systems. By requiring address verification ONLY when interacting
@@ -842,7 +837,7 @@ COMPUTE & CACHE:
     </section>
 
     <section anchor="lovma">
-      <name>Local On-link Voucher Multicast Address (LOVMA)</name>
+      <name>Local On-link Voucher Multicast Address</name>
       <t>
         The LOVMA group is defined for the express purpose of sharing gratuitous, independent VBA details between nodes.
         All nodes with VBA awareness, regardless of Interface Enforcement Mode (<xref target="summary-interfaces-mode"/>)
@@ -862,6 +857,7 @@ COMPUTE & CACHE:
           <li>LOVMA traffic is considered unidirectional. Nodes SHOULD NOT send unicast responses in reply to multicast traffic.
             This recommended constraint acts to prevent asymmetric traffic volumes and potential denial of service vulnerabilites
             leveraging the LOVMA.</li>
+          <li>All LOVMA datagrams MUST be User Datagram Protocol (UDP) <xref target="RFC768"/> packets.</li>
           <li>VBA-enabled nodes MUST NOT assume that other VBA-enabled nodes are subscribed to the LOVMA multicast group or
             receiving any of its related datagrams.</li>
           <li>Subscribing nodes MUST NOT offer any trust of LOVMA packets, unless a datagram validation procedure is explicitly
@@ -879,10 +875,24 @@ COMPUTE & CACHE:
           <name>Voucher Status Reports (VSRs)</name>
           <t>
           </t>
+          <figure>
+            <name>Structure of a VSR Datagram</name>
+            <artwork type="ascii-art" name="lovmaVsr.txt">
+              <![CDATA[
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |      Type     |     Length    | IEM |        Reserved         |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        64-bit VoucherID                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+              ]]>
+            </artwork>
+          </figure>
         </section>
 
         <section anchor="lovma-packets-vci">
-          <name>Voucher Capability Indications (VCI)</name>
+          <name>Voucher Capability Indications (VCIs)</name>
           <t>
             Nodes may notify the LOVMA about their potential candidacy as a link Voucher Bearer (<xref target="bearers"/>) by
             sending a VCI datagram. The VCI is an informational packet REQUIRED to be considered for election by the current VB.
@@ -892,6 +902,20 @@ COMPUTE & CACHE:
             VCI packets as valid Link Vouchers. The current VB MAY maintain a state of unexpired VCI packets, especially when
             it intends to elect a new node responsible for the LV.
           </t>
+          <figure>
+            <name>Structure of a VCI Datagram</name>
+            <artwork type="ascii-art" name="lovmaVci.txt">
+              <![CDATA[
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |      Type     |     Length    | IEM |        Reserved         |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        64-bit VoucherID                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+              ]]>
+            </artwork>
+          </figure>
         </section>
 
         <section anchor="lovma-packets-vha">
@@ -911,12 +935,40 @@ COMPUTE & CACHE:
             of a valid, unexpired VHA from the previous VB. After 2 minutes, the new VB MUST consider the LV parameters (including the
             public key) of the previous VB as invalid, and no longer trigger RAs based on receipt of VHAs.
           </t>
+          <figure>
+            <name>Structure of a VHA Datagram</name>
+            <artwork type="ascii-art" name="lovmaVha.txt">
+              <![CDATA[
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |      Type     |     Length    | IEM |        Reserved         |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        64-bit VoucherID                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+              ]]>
+            </artwork>
+          </figure>
         </section>
 
         <section anchor="lovma-packets-pvr">
           <name>Preemptive Voucher Rotations (PVRs)</name>
           <t>
           </t>
+          <figure>
+            <name>Structure of a PVR Datagram</name>
+            <artwork type="ascii-art" name="lovmaPvr.txt">
+              <![CDATA[
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |      Type     |     Length    | IEM |        Reserved         |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                        64-bit VoucherID                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+              ]]>
+            </artwork>
+          </figure>
         </section>
       </section>
     </section>
@@ -989,6 +1041,9 @@ COMPUTE & CACHE:
     <section anchor="Security">
       <name>Security Considerations</name>
       <t>
+        This section includes discussions on various subjects related to the security of Voucher-Based Addresses.
+        It also serves to clarify certain VBA processes or tangential protocol-related topics that may not have
+        had adequate exploration in the rest of this document.
       </t>
 
       <section anchor="security-solutions">
@@ -1017,7 +1072,7 @@ COMPUTE & CACHE:
             Likewise, VBAs rely on the principle that link-lyer addresses MUST be unique on the same broadcast medium.
             VBAs offer great protection for unsecured L2 setups, but link-layer security would help to remediate further concerns.
         -->
-        <name>Use of Link-Layer Bindings</name>
+        <name>Privacy of Link-Layer Bindings</name>
         <t>
         </t>
       </section>
@@ -1111,7 +1166,7 @@ COMPUTE & CACHE:
       <t>
         Address(es): FF02::ABBA<br />
         Description: Local On-link Voucher Multicast Address<br />
-        Reference  : draft-puhl-6man-ndp-vba-00
+        Reference: draft-puhl-6man-ndp-vba-00
       </t>
       <t>
         Two new Neighbor Discovery Protocol options are defined in this document and must have new Option Type
@@ -1143,6 +1198,7 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4429.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7527.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>
         <!-- key-derivation crypto resources -->
       </references>
       <!-- <references>
