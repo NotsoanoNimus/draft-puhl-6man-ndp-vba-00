@@ -932,11 +932,11 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           </t>
           <t>
             If the sending neighbor is already in the receiver's neighbor cache, then the receiver SHOULD
-            NOT verify the address of the sender. The cache MAY be refreshed if the link-layer address bindings
-            have not changed for the sender's cached address.
+            NOT verify the address of the sender. The cache MAY be refreshed if the link-layer IP address
+            bindings have not changed for the sender's cache entry.
           </t>
           <t>
-            As stated in this document's introduction <xref target="intro"/>,
+            As stated in this document's introduction (<xref target="intro"/>),
             VBA employment primarily supplies privacy-focused address generation and uses neighbor address
             verification to provide proof of address ownership. The goal is to prevent on-path attackers
             from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
@@ -1183,18 +1183,32 @@ COMPUTE & CACHE:
     <section anchor="bearers">
       <name>Voucher Bearers</name>
       <t>
-        A Voucher Bearer is the on-link node responsible
+        A Voucher Bearer (VB) is the on-link node responsible for the current, majority-accepted Link Voucher. This
+        section introduces any VB constraints or procedures for implementations or deployments to maintain awareness of.
       </t>
       <t>
-        Any node MAY be elected to serve as the link's VB, whether by manual configuration or by a process of election and appointment
-        from the current VB (see <xref target="lovma-packets-vci"/>). If the current VB is NOT a router or responsible for routing subnet
-        traffic, then it MUST distribute the LV via an NDP Redirect packet with an LV option instead of an NDP RA packet. The Redirect is
-        expected to behave similarly to the defined NDP process (<!-- NDP section ref -->).
+        Any node MAY be elected to serve as the link's VB, whether by manual configuration or by a process of election
+        and appointment from the current VB (see <xref target="lovma-packets-vci"/>). If the current VB is NOT a router
+        or responsible for routing subnet traffic, then it MUST distribute the LV via an NDP Redirect packet with an LV
+        option, instead of using an NDP RA packet with the LV option. The Redirect is expected to behave similarly to
+        the defined NDP process (<!-- NDP section ref -->).
       </t>
 
       <section anchor="bearers-vigilance">
         <name>Employing RA-Guard</name>
         <t>
+          RA-Guard, short for Router Advertisement Guarding, is specified in <xref target="RFC6105"/> as a response to
+          the Rogue RA Problem Statement in <xref target="RFC6104"/>. Networks need to protect against basic Rogue RAs
+          in order to keep routing trusted and secured without high-complexity changes to the infrastructure. <!-- TODO -->
+        </t>
+        <t>
+          In the case where the elected VB is NOT a link router nor responsible for routing traffic, and NDP Redirect
+          packets are being used with the LV option, RA-Guard is RECOMMENDED to also include these in its learning
+          processes.
+        </t>
+        <t>
+          The exact deployment of RA-Guard is beyond the scope of this document, but it is STRONGLY RECOMMENDED in
+          order to ensure VBAs faithfully serve their purpose during the NDP Address Resolution process.
         </t>
       </section>
 
@@ -1402,6 +1416,8 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6105.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6104.xml"/>
         <!-- Default KDF Definitions -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9106.xml"/>
