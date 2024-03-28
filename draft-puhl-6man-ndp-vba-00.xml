@@ -915,7 +915,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
               A 3-bit identifier representing the current Interface Enforcement Mode of the sending interface (see
               <xref target="summary-interfaces-mode"/>).
             </t>
-            <dl spacing="compact" newline="false">
+            <dl spacing="compact" newline="false" indent="3">
               <dt>0</dt><dd>AAD</dd>
               <dt>1</dt><dd>AGO</dd>
               <dt>2</dt><dd>AGV</dd>
@@ -1189,6 +1189,13 @@ COMPUTE & CACHE:
       <t>
         This multicast group is located at the IPv6 address FF02::ABBA. A helpful mnemonic to remember this address is to
         think of "ABBA" as the closest possible hexademical rendition of "a VBA".
+      </t>
+      <t>
+        The designated UDP port on which all LOVMA traffic is received is 2196.
+      </t>
+      <t>
+        Senders of LOVMA traffic are REQUIRED to send packets from a link-local addresses bound to the interface being used
+        to communicate on the LOVMA channel.
       </t>
 
       <section anchor="lovma-constraints">
@@ -1620,6 +1627,24 @@ COMPUTE & CACHE:
       <section anchor="security-fairness">
         <name>Computational Fairness</name>
         <t>
+          The selection of an appropriate Key Derivation Function is essential to scale the difficulty of
+          discovering hash collisions. The choice of KDF is also essential for the notion of fairness in
+          computing the generated result. As described in <xref target="addenda-voucher-kdfs"/>, choosing a
+          CPU-bound KDF algorithm is significantly more likely to result in very disparate computation times
+          than choosing a Memory-bound KDF for VBA-related calculations. <!-- ext ref -->
+        </t>
+        <t>
+          Even when using memory-bound KDFs like Argon2d, the proper delegation of baseline algorithm
+          parameters in the Link Voucher SHOULD always tend toward being more forgiving for low-power or
+          embedded systems. The balance of low compute latencies with high security might be difficult to
+          determine, but implementations SHOULD attmept to discover and apply defaults that achieve this goal.
+        </t>
+        <t>
+          Adjusting computation time of a single VBA to be approximately 20 milliseconds for the least powerful
+          network node (and subsequently and estimated 1 millisecond for the fastest) produces a very negligible
+          delay in processing Neighbor Discovery messages for all hosts. At the same time, this theoretical time
+          to compute addresses hinders ANY node from being able to compute collisions in any expeditious manner.
+          This guarantees responsiveness while also protecting node address ownership.
         </t>
       </section>
 
@@ -1654,20 +1679,9 @@ COMPUTE & CACHE:
       <name>IANA Considerations</name>
       <t>
         This document defines two new Neighbor Discovery Protocol option types and one new link-local multicast
-        address.
-      </t>
-      <t>
-        See <xref target="lovma"/> for information about the Local On-link Voucher Multicast Address subscribed
-        to by VBA-enabled network interfaces.
-      </t>
-      <t>
-        Assigned in the "Link-Local Scope Multicast Addresses" subregistry of the "IPv6 Multicast Address Space
-        Registry":
-      </t>
-      <t>
-        Address(es): FF02::ABBA<br />
-        Description: Local On-link Voucher Multicast Address<br />
-        Reference: draft-puhl-6man-ndp-vba-00
+        address. One of the NDP option types contains another set of Type-Length-Value (TLV) packet options.
+        The multicast address also uses other assigned TLV packets to convey important (but optional) protocol
+        information.
       </t>
       <t>
         Two new Neighbor Discovery Protocol options are defined in this document and must have new Option Type
@@ -1678,6 +1692,92 @@ COMPUTE & CACHE:
         <li>The Link Voucher option, described in <xref target="addenda-voucher"/>.</li>
         <li>The Voucher Summary option, described in <xref target="addenda-summary"/>.</li>
       </ul>
+      <t>
+        The Link Voucher option includes a new option type used to convey KDF algorithm selections.
+        Assigned in the "Algorithm Type Options" subregistry are string identifiers corresponding to integers 
+        which indicate their Algorithm Type values. Future values MUST be assigned according to the Standards
+        Action policy of <xref target="RFC8126"/>. Default registrations are defined in this document:
+      </t>
+      <table anchor="IANA-algo-type-registrations">
+        <name>Initial Values of the "Algorithm Type Options" Subregistry</name>
+        <thead>
+          <th>Type</th>
+          <th>Name/Identifier</th>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>VBAKDF_PBKDF2_SHA256</td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td>VBAKDF_ARGON2D</td>
+          </tr>
+          <tr>
+            <td>20</td>
+            <td>VBAKDF_SCRYPT</td>
+          </tr>
+        </tbody>
+      </table>
+      <t>
+        See <xref target="lovma"/> for information about the Local On-link Voucher Multicast Address subscribed
+        to by VBA-enabled network interfaces. This section will also contain specific packet formats.
+      </t>
+      <t>
+        Assigned in the "Link-Local Scope Multicast Addresses" subregistry of the "IPv6 Multicast Address Space
+        Registry":
+      </t>
+      <blockquote>
+        Address(es): FF02::ABBA<br />
+        Description: Local On-link Voucher Multicast Address<br />
+        Reference: draft-puhl-6man-ndp-vba-00
+      </blockquote>
+      <t>
+        The well-known UDP port 2196 is used for multicast traffic on the LOVMA channel. Assigned in the "Service
+        Name and Transport Protocol Port Number Registry":
+      </t>
+      <blockquote>
+        Service Name: vba_lovma
+        Port Number: 2196
+        Transport Protocol: UDP
+        Description: IPv6 Voucher-Based Addressing LOVMA updates
+        Reference: draft-puhl-6man-ndp-vba-00
+      </blockquote>
+      <t>
+        A set of three TLV packet types used specifically in the new LOVMA channel are defined in this document.
+        Assigned in the "LOVMA Message Types and Options" subregistry of the "Voucher-Based Addressing (VBA)
+        Parameters" registry.
+      </t>
+      <t>
+        The values in the "LOVMA Message Types and Options" subregistry are string identifiers corresponding
+        to integers which indicate their packet Type values. Future values MUST be assigned according to the Standards
+        Action policy of <xref target="RFC8126"/>. Default registrations are defined in this document:
+      </t>
+      <table anchor="IANA-lovma-registrations">
+        <name>Initial Values of the "LOVMA Message Types and Options" Subregistry</name>
+        <thead>
+          <th>Type</th>
+          <th>Name/Identifier</th>
+          <th>Reference</th>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>LOVMA_VSR</td>
+            <td><xref target="lovma-packets-vsr"/></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>LOVMA_VCI</td>
+            <td><xref target="lovma-packets-vci"/></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>LOVMA_VHA</td>
+            <td><xref target="lovma-packets-vha"/></td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   </middle>
 
@@ -1706,6 +1806,7 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7527.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/>
       </references>
       <!-- <references>
         <name>Informative References</name>
@@ -1739,7 +1840,7 @@ COMPUTE & CACHE:
     <section anchor="appendix-randomness">
       <name>Validating Address Randomness</name>
       <t>
-        The following appendices evaluate the statistical randomness of generated VBAs on the basis of a few
+        This section evaluates the statistical randomness of generated VBAs on the basis of a few
         noted conditions. All results were acquired through use of the Dieharder suite of PRNG tests
         <!-- ref -->.
       </t>
