@@ -213,29 +213,15 @@
       </section>
 
       <section anchor="summary-interfaces">
-        <name>Interface-level Configurations</name>
+        <name>Interface-level Processes &amp; Configurations</name>
         <t>
           This section outlines different interface-level configurations and options which MUST be available in
-          any implementation of this specification.
+          any implementation of this specification. It also discusses topics specific to caching Link Voucher
+          information on local interfaces and outlines some specific details of the process.
         </t>
-
-        <section anchor="summary-interfaces-state">
-          <name>Preserving Voucher-Related State</name>
-          <t>
-            VBA-enabled interfaces for all nodes, regardless of their selected Interface Enforcement Modes, are
-            REQUIRED to store the full state of the most current, validated Link Voucher. If a Link Voucher is not
-            available on-link, then no stored LV state is required and the node MUST enter the Address Awareness
-            Disabled state (see the next section). If a LV subsequently becomes available, the node MAY choose to
-            enter a different state or IEM based on the implementation.
-          </t>
-          <t>
-            The node responsible for the Link Voucher MAY at any time issue a handoff of that responsibility to
-            another node (see <xref target="lovma-packets-vha"/>). During the period of transition between the
-            previous Link Voucher and the upcoming one, VBA-enabled nodes MUST allow both LVs to be cached so
-            that VBAs using either LV become valid. Once the transition window ends, the amount of valid LVs will
-            return to 1.
-          </t>
-        </section>
+        <t>
+          Link Vouchers are defined in <see xref="addenda-voucher"/>.
+        </t>
 
         <section anchor="summary-interfaces-mode">
           <name>Interface Enforcement Modes</name>
@@ -247,7 +233,8 @@
           </t>
           <t>
             Implementations MUST allow nodes to independently opt into any one of the following IEMs for EACH
-            of their local interfaces:
+            of their local interfaces. The IEM state MAY also be specified on each interface statically, in which
+            case all other automatic IEM state transitions MUST NOT apply.
           </t>
           <dl newline="true">
             <dt>AAD - Address Awareness Disabled</dt>
@@ -262,7 +249,7 @@
             <dt>AGV - Address Generation &amp; Verification</dt>
             <dd>The address generation and verification procedures are followed as per this document. Address
               Resolution is REQUIRED to fail if the advertised target link-layer address cannot be successfully
-              bound to the target IP address. This SHOULD be the canonical, default Enforcement Mode for VBAs.</dd>
+              bound to the target IP address. This SHOULD be the default Enforcement Mode for interfaces.</dd>
 
             <dt>AGVL - Address Generation &amp; Verification with Levels</dt>
             <dd>Both address generation and verification procedures are employed, but verification failures MUST
@@ -271,20 +258,139 @@
               MUST be indicated as "Unsecured" and given less trust or authority than "Secured" responses.</dd>
           </dl>
           <t>
-            For AGVL mode, the Secured and Unsecured distinction is inherited from SEND <xref target="RFC3971"/>.
+            For AGVL mode, the Secured and Unsecured distinction is adopted from SEND <xref target="RFC3971"/>.
             If an AGVL interface receives multiple Neighbor Advertisement responses, it MUST strongly prefer Secured
             NAs over Unsecured NAs to determine which link-layer address is legitimate during the Address Resolution
             process. If multiple Secured responses are received, each with different link-layer addresses, then there
             is a VBA collision and the behavior of the interface is undefined. In this rare case, the pool of Secured
-            responses might be equally valid, so it is left to the implementation to decide the correct course of action.
+            responses are equally valid VBAs, so it is left to the implementation to decide the correct course of action.
           </t>
+        </section>
+
+        <section anchor="summary-interfaces-state">
+          <name>Preserving Voucher-Related State</name>
+          <t>
+            VBA-enabled interfaces for all nodes, regardless of their selected Interface Enforcement Modes, are
+            REQUIRED to store the full state of the most current, validated Link Voucher. If a Link Voucher is not
+            available on-link, then no stored LV state is required and the node MUST enter the Address Awareness
+            Disabled state (see <xref target="summary-interfaces-mode"/>). If a LV subsequently becomes available,
+            the node MAY choose to enter a different state or IEM based on the implementation.
+          </t>
+          <t>
+            Link Voucher details MAY also be set statically on an interface. In such cases, the static information
+            MUST contain at least a VoucherID, Voucher Seed, and Algorithm Type specification. Any interface with
+            static details configured MUST ignore any received LVs on-link. Static LVs MUST always be considered in
+            an 'active' state and MUST NOT expire.
+          </t>
+        </section>
+
+        <section anchor="summary-interfaces-acquisitions">
+          <name>Link Voucher Acquisitions</name>
+          <t>
+            Interfaces connecting to the network for the first time are REQUIRED to accept and cache the FIRST
+            LV received on-link. If the interface intends to maintain responsibility for the LV, it MUST follow
+            the process outlined in <xref target="addenda-voucher-senders"/>.
+          </t>
+          <t>
+            If an active LV expires -- i.e., no updated LV has been received on-link within the amount of seconds
+            specified in the 'Expiration' field of the most recent LV -- then the interface MUST again accept the
+            first received LV. The Expiration time can also elapse while an interface is disconnected from the link,
+            and so it MUST follow the same process regardless of how LV expiration occurred.
+          </t>
+          <t>
+            Because Link Voucher distribution to interfaces uses a 'first-come-first-serve' trust methodology,
+            it is essential for adversarial networks, especially public networks, to implement some form of
+            protection against rogue LVs at a lower or intermediate level. See <xref target="bearers-vigilance"/>
+            for more information.
+          </t>
+          <t>
+            In the cases where these protective mechanisms are not available, administrators MAY choose to set LV
+            information on each node statically. Administrators in this sitation SHOULD also choose to employ
+            some form of intrusion detection to better mitigate rogue LVs from appearing and affecting the
+            local network.
+          </t>
+        </section>
+
+        <section anchor="summary-interfaces-transitions">
+          <name>Link Voucher Transitions</name>
+          <t>
+            The node responsible for the Link Voucher MAY at any time issue a handoff of that responsibility to
+            another node (see <xref target="lovma-packets-vha"/>). During the period of transition between the
+            previous Link Voucher and the upcoming one, VBA-enabled nodes which are subscribed to the LOVMA channel
+            SHOULD receive VHA multicast packets specifying the new responsible node and LV. These LOVMA-connected
+            nodes are strongly RECOMMENDED to allow both LVs to be cached so that VBAs generated using either LV
+            are immediately valid. They are also strongly RECOMMENDED to begin address generation in anticipation
+            of the upcoming LV becoming active.
+          </t>
+          <t>
+            Once the transition window ends, the amount of valid LVs will return from 2 to 1. The transition window
+            ends when the original responsible node fails to refresh its LV within its LV-specified Expiration time
+            (thus purposefully letting its LV expire).
+          </t>
+          <t>
+            For nodes which do NOT receive or regard LOVMA VHA datagrams, the 'transition' process becomes more
+            akin to a 'hard handoff'. Due to LV requirements, these nodes will not trust the new LV until the previous
+            LV has expired, at which time any LV becomes acceptable. For this reason, any VBAs preemptively generated
+            with the upcoming LV will not be successfully verified by neighbors unaware of the handoff, until the
+            transition window has ended and the new LV becomes primary.
+          </t>
+          <t>
+            When a handoff completes, the Link Voucher has changed. Any time the stored VoucherID of the active
+            LV transitions to another, the Neighbor Cache MUST be cleared and all VBAs, whether generated or verified,
+            MUST be derived from the parameters of the newly active LV ONLY. This is true even in the case of a hard
+            handoff.
+          </t>
+          <t>
+            The handoff and transition window provides an opportunity for optimization. If neighbors are aware of the
+            upcoming voucher, they MAY opt to preemptively generate their new VBAs in anticipation of the completed LV
+            transition. Implementations MAY also choose to utilize this transition window for pre-caching the computed
+            addresses of cached neighbors who have a Preferred Iterations Count specified in LOVMA VSR packets.
+          </t>
+          <t>
+            Finally, if the current node responsible for the LV either disconnects from the network or lets its LV
+            expire without an election process, then the link becomes open and allows other nodes to fill in the LV
+            void with their own. If no other VB assumes responsibility on the link while the primary VB is away or not
+            transmitting updated LVs, all VBA-enabled nodes MUST retain the most recent valid LV for the purposes of
+            address generation and verification.
+          </t>
+          <figure>
+            <name>Link Voucher Transitions</name>
+            <artwork type="ascii-art" name="voucherTransitions.txt">
+              <![CDATA[
+  ==========================================> Time
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+  ...   LV_A Validity        |
+  ~~~|~~~~~|~~~~~X~~~~~~~~~~~Z
+     |     |     +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     |     |     |      LV_B Validity       ...
+     |     |     +~~~~~|~~~~~|~~~~~|~~~~~|~~~~~~~
+  |==|=====|=====|=====|=====|=====|=====|===> Time
+  |  O     O     O     O     O     O     O    ...
+  |              |           |
+  [ LV_A Active  [ Window    [ LV_B Active
+ (1)            (2)         (3)
+
+** 'X' marks the final advertisement for LV_A.
+** 'Z' marks the time [X + LV_A.Expiration].
+** 'O' indicates the advertisement of a LV on-link.
+
+  Moments:
+    1   = Link Voucher A is active for all nodes.
+    2   = VHA. LOVMA-subscribed nodes become aware
+           of a transition window. Both LV_A and
+           LV_B are considered active LVs.
+    3   = LV_A expires. Link Voucher B is active for
+           neighbors and the transition completes.
+              ]]>
+            </artwork>
+          </figure>
         </section>
       </section>
 
       <section anchor="summary-generate">
         <name>Address Generation</name>
         <t>
-          This section discusses the generation procedure and composition of a VBA.
+          This section discusses the VBA generation procedure and the composition of VBAs.
         </t>
         <figure>
           <name>The Voucher-Based Address Generation Procedure</name>
@@ -296,11 +402,11 @@ Address composition:
     | 64-bit prefix | Z (16 bits) |     H (48 bits)     |
     +------ ~ ------+-------------+---------------------+
 
-... where:
-    PREFIX = The 64-bit subnet prefix. If the subnet length is
+  where:
+    PREFIX is the 64-bit subnet prefix. If the subnet length is
               shorter than 64 bits, the rest of the 64-bit field
               MUST be initialized to 0.
-    SUFFIX = The first 8 bytes from the result of a Key Derivation
+    SUFFIX is the first 8 bytes from the result of a Key Derivation
               Function (KDF) 'K' iterated 'L' times. The leftmost
               hextet is replaced by 'Z'.
 
@@ -349,7 +455,7 @@ Formulas:
           The address generation algorithm is detailed procedurally as follows:
         </t>
         <ol>
-          <li>A host connects to a VBA network and obtains Link Voucher [<xref target="addenda-voucher"/>] details.</li>
+          <li>A host connects to a VBA network and obtains Link Voucher details (<xref target="addenda-voucher"/>).</li>
           <li>The 'L' value is chosen based on (1) host preference, (2) intended difficulty, or (3) randomly.</li>
           <li>The Link Voucher details contain instructions for which KDF to use and which 128-bit seed value to use.</li>
           <li>
@@ -535,7 +641,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
   >                      DER-encoded Public Key                   <
   >                            & Signature                        <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  >                             Padding                           <
+  >                            Padding                            <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             ]]>
           </artwork>
@@ -550,9 +656,9 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           <name>Processing Rules for Senders</name>
           <t>
             Senders of Link Vouchers MUST maintain stateful information about their LVs at all times, so reliable and consistent
-            LV details can be sent at any time. The rotation of stable LV information, such as the Seed value or Expiration details,
-            SHOULD be signaled in advance using the LOVMA group <xref target="lovma-packets-pvr"/>. Transferral of LV responsibility
-            to another LV identifier SHOULD use similar means <xref target="lovma-packets-vha"/>.
+            LV details can be sent at any time. The rotation of stable LV information, such as the Seed value or Algorithm details,
+            MUST be signaled in advance using the LOVMA group <xref target="lovma-packets-vha"/> which will initiate a transition
+            window.
           </t>
           <t>The Sender's LV MUST always be unique on-link and NEVER be forwarded or duplicated copies of other LVs.</t>
           <t>
@@ -605,7 +711,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           <t>
             Receiving nodes MUST statefully maintain and update all LV information per interface, if and only if the received LV
             is successfully verified according to its cryptographic signature. The most recent, valid, and unexpired version of
-            the LV is what MUST always be cached on the receiving interface.
+            the LV is what MUST always be cached and preferred on the receiving interface.
           </t>
           <t>
             Segment VBs may occasionally wish to hand off responsibility for the Link Voucher to another VB through gratuitous
@@ -828,8 +934,8 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
         <section anchor="addenda-summary-senders">
           <name>Processing Rules for Senders</name>
           <t>
-            Senders SHOULD always include this option with all NDP Neighbor Solicitations or Advertisements. When a valid,
-            unexpired LV is NOT currently available on the sending interface, senders MUST set the IEM to AAD mode and initialize
+            Senders SHOULD always include this option with all NDP Neighbor Solicitations or Advertisements. When a valid
+            LV is NOT currently available on the sending interface, senders MUST set the IEM to AAD mode and initialize
             the VoucherID to 0.
           </t>
           <t>
@@ -859,7 +965,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
                 ID of the active Link Voucher of the receiving interface. To 'disregard' means to not respond to the NS at all.
               </t>
               <t>
-                If the receiver is aware of a current Handoff Window on the link, then either the current voucher ID or the
+                If the receiver is aware of a current Voucher Handoff on the link, then either the current voucher ID or the
                 upcoming voucher ID MUST be considered valid.
               </t>
             </dd>
@@ -884,8 +990,8 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
                 proceeds to VBA verification per the receiver's IEM.
               </t>
               <t>
-                If the receiver is aware of a current Handoff Window on the link, then either the current voucher ID or the upcoming
-                voucher ID MUST be considered valid.
+                If the receiver is aware of a current Voucher Handoff on the link, then either the current voucher ID or the
+                upcoming voucher ID MUST be considered valid.
               </t>
             </dd>
             <dt>Any other NDP packet types</dt>
@@ -912,6 +1018,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
         <section anchor="behavioral-send-nonce">
           <name>Nonce Option</name>
           <t>
+            <!-- TODO -->
           </t>
         </section>
 
@@ -1077,6 +1184,7 @@ COMPUTE & CACHE:
         The LOVMA group is defined for the express purpose of sharing gratuitous, independent VBA details between nodes.
         All nodes with VBA awareness, regardless of Interface Enforcement Mode (<xref target="summary-interfaces-mode"/>)
         are strongly RECOMMENDED to join this group. Nodes are NOT REQUIRED to make practical use of any LOVMA traffic.
+        Current link Voucher Bearers are always REQUIRED to join the LOVMA group.
       </t>
       <t>
         This multicast group is located at the IPv6 address FF02::ABBA. A helpful mnemonic to remember this address is to
@@ -1093,22 +1201,40 @@ COMPUTE & CACHE:
             This recommended constraint acts to prevent asymmetric traffic volumes and potential denial of service vulnerabilites
             leveraging the LOVMA.</li>
           <li>All LOVMA datagrams MUST be User Datagram Protocol (UDP) <xref target="RFC768"/> packets.</li>
-          <li>VBA-enabled nodes MUST NOT assume that other VBA-enabled nodes are subscribed to the LOVMA multicast group or
-            receiving any of its related datagrams.</li>
+          <li>VBA-enabled nodes MUST NOT assume that any other VBA-enabled nodes are subscribed to the LOVMA multicast group or
+            receiving any of its related datagrams. However, nodes MUST assume the presence of the current link VB in the LOVMA.</li>
           <li>Subscribing nodes MUST NOT offer any trust of LOVMA packets, unless a datagram validation procedure is explicitly
-            declared for the extension protocol using the LOVMA.</li>
+            declared in the Defined Datagram using the LOVMA.</li>
         </ul>
       </section>
 
       <section anchor="lovma-packets">
         <name>Defined Datagrams</name>
         <t>
-          This section outlines and formalizes some initial datagrams which may be gratuitously sent to the LOVMA at any time.
+          This section outlines and formalizes some initial datagrams which should be expected to appear on LOVMA at any time.
+        </t>
+        <t>
+          All packets MUST use a Type-Length-Value (TLV) format. Type is an 8-bit integer identifying the datagram type, Length
+          is the length of the packet (including the Type and Length fields) in units of 4 octets, and Value is the following
+          object to be parsed.
+        </t>
+        <t>
+          The Type or Length fields MUST NOT be set to 0. Receivers MUST ignore datagrams with a Type of 0 or a Length of 0.
         </t>
 
         <section anchor="lovma-packets-vsr">
           <name>Voucher Status Reports (VSRs)</name>
           <t>
+            A node might opt to occasionally send VSRs to the LOVMA channel to gratuitously let other nodes know of its presence
+            as a VBA-enabled interface in addition to a few VBA state-related fields.
+          </t>
+          <t>
+            Sending interfaces are REQUIRED to add their link-layer identifier onto VSR packets. This allows receivers to easily
+            identify the sending interface by ID, rather than associating the sender to one of its potentially many IP addresses
+            on-link.
+          </t>
+          <t>
+            Senders MUST adhere to the rules defined in the below figure. Receivers are NOT REQUIRED to parse any of the fields.
           </t>
           <figure>
             <name>Structure of a VSR Datagram</name>
@@ -1119,23 +1245,63 @@ COMPUTE & CACHE:
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |      Type     |     Length    | IEM |        Reserved         |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                        64-bit VoucherID                       |
+  |                        32-bit VoucherID                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |     Pref. Iterations Count    |          LLID Length          |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  >                              LLID                             <
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  >                            Padding                            <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
               ]]>
             </artwork>
           </figure>
+          <dl newline="true">
+            <dt>Type</dt><dd>1</dd>
+            <dt>Length</dt>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.<dd>
+            <dt>IEM</dt>
+            <dd>
+              A 3-bit value identifying the IEM of the sending interface. See <xref target="addenda-summary"/> for the possible IEM
+              values. This value MUST be set to AAD mode if the sending interface does not have a currently cached, active Link Voucher.
+            </dd>
+            <dt>Reserved</dt>
+            <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
+            <dt>VoucherID</dt>
+            <dd>
+              The ID of the cached, active Link Voucher on the sending interface. Senders MUST initialize this to 0 if no LV is present
+              or if they are operating in the AAD IEM.
+            </dd>
+            <dt>Preferred Iterations Count</dt>
+            <dd>
+              Also known as the 'sticky' iterations count. Senders MAY use this field to indicate a preferred 'L' value when generating
+              on-link addresses for each prefix. Receivers MAY associate this field with the Link Layer ID (LLID) field which the generated
+              address is bound to, to preemptively calculate VBAs for a neighbor. See <xref target="optimizations"/> for more details.
+            </dd>
+            <dt>LLID Length</dt><dd>The length in bytes of the LLID field. Stored as a big-endian value.</dd>
+            <dt>LLID</dt><dd>A variable-length field representing the node's on-link Link Layer identifier.</dd>
+            <dt>Padding</dt>
+            <dd>
+              Any extra padding set on the datagram to round its total length to an even 4-octet boundary. Senders MUST initialize this
+              value to 0. Receivers MUST ignore this field.
+            </dd>
+          </dl>
         </section>
 
         <section anchor="lovma-packets-vci">
           <name>Voucher Capability Indications (VCIs)</name>
           <t>
-            Nodes may notify the LOVMA about their potential candidacy as a link Voucher Bearer (<xref target="bearers"/>) by
-            sending a VCI datagram. The VCI is an informational packet REQUIRED to be considered for election by the current VB.
+            A node may notify the LOVMA channel about its potential candidacy as a link Voucher Bearer (<xref target="bearers"/>)
+            by sending a VCI datagram. The VCI is an informational packet REQUIRED to be considered for election by the current VB.
           </t>
           <t>
             Receivers are typically intended to be the current VB, but any node MAY make use of VCI details. Nodes MUST NOT consider
             VCI packets as valid Link Vouchers. The current VB MAY maintain a state of unexpired VCI packets, especially when
-            it intends to elect a new node responsible for the LV.
+            it intends to elect a new node responsible for the LV. Current VBs SHOULD NOT elect a new VB without first receiving a
+            VCI datagram indicating the sender's readiness to be elected.
+          </t>
+          <t>
+            Sending nodes MUST NOT assume that issuance of a VCI packet is guaranteed to lead to their eventual election as a link VB.
+            The decision for election MUST be indicated by receipt of a signed VHA datagram.
           </t>
           <figure>
             <name>Structure of a VCI Datagram</name>
@@ -1144,13 +1310,34 @@ COMPUTE & CACHE:
    0                   1                   2                   3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |      Type     |     Length    | IEM |        Reserved         |
+  |      Type     |     Length    |          Reserved             |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                        64-bit VoucherID                       |
+  |                            Reserved                           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
+  |                        64-bit Timestamp                       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  >                      Link Voucher Contents                    <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
               ]]>
             </artwork>
           </figure>
+          <dl newline="true">
+            <dt>Type</dt><dd>2</dd>
+            <dt>Length</dt>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.<dd>
+            <dt>Reserved</dt>
+            <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
+            <dt>Timestamp</dt><dd><!-- TODO --></dd>
+            <dt>Link Voucher Contents</dt>
+            <dd>
+              The entirety of the NDP Link Voucher option to be attached to Router Advertisements or Redirects. This also MUST include
+              the NDP Option Type and Length values. Validation of this field follows the same rules outlined by <xref target="addenda-vouchers"/>.
+              Receivers MUST NOT expect the signature or public key of the LV option to be the same as that of the current LV, because
+              this packet type is only announcing a node's candidacy for future election and it is NOT attempting to delcare a network LV.
+              Receivers MUST ignore the entire VCI if validation of the embedded Link Voucher fails for any reason, including invalid
+              cryptographic signatures, null IDs, etc.
+            </dd>
+          </dl>
         </section>
 
         <section anchor="lovma-packets-vha">
@@ -1170,6 +1357,15 @@ COMPUTE & CACHE:
             of a valid, unexpired VHA from the previous VB. After 2 minutes, the new VB MUST consider the LV parameters (including the
             public key) of the previous VB as invalid, and no longer trigger RAs based on receipt of VHAs.
           </t>
+          <t>
+            VHAs MUST also be used to indicate a change in active Link Voucher details using the 'Refresh' bit. This indicates that
+            the handoff represents a transition between LV parameters from the same VB rather than a change of issuing VB nodes.
+            Using the VHA for this purpose affords neighbors enough time to fully transition addresses between varying LV parameters.
+          </t>
+          <t>
+            See <xref target="summary-interfaces-transitions"/> for more details regarding the handoff process at the per-interface
+            scope.
+          </t>
           <figure>
             <name>Structure of a VHA Datagram</name>
             <artwork type="ascii-art" name="lovmaVha.txt">
@@ -1177,39 +1373,55 @@ COMPUTE & CACHE:
    0                   1                   2                   3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |      Type     |     Length    | IEM |        Reserved         |
+  |      Type     |     Length    |R|          Reserved           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                        64-bit VoucherID                       |
+  |                                                               |
+  |                        64-bit Timestamp                       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-              ]]>
-            </artwork>
-          </figure>
-
-          <section anchor="lovma-packets-vha-window">
-            <name>Link Voucher Handoff Windows</name>
-            <t>
-            </t>
-          </section>
-        </section>
-
-        <section anchor="lovma-packets-pvr">
-          <name>Preemptive Voucher Rotations (PVRs)</name>
-          <t>
-          </t>
-          <figure>
-            <name>Structure of a PVR Datagram</name>
-            <artwork type="ascii-art" name="lovmaPvr.txt">
-              <![CDATA[
-   0                   1                   2                   3
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  |                    32-bit Signer VoucherID                    |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |      Type     |     Length    | IEM |        Reserved         |
+  |                   32-bit Upcoming VoucherID                   |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                        64-bit VoucherID                       |
+  >                                                               <
+  >                     DER-encoded Signature                     <
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  >                            Padding                            <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
               ]]>
             </artwork>
           </figure>
+          <dl newline="true">
+            <dt>Type</dt><dd>3</dd>
+            <dt>Length</dt>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.<dd>
+            <dt>Refresh Bit</dt>
+            <dd>
+              A single bit. When set to '1', it indicates that the transition is only a Link Voucher refresh and does not represent a
+              LV handoff to a new or different Voucher Bearer node. This field is mostly used for informational purposes and for any
+              further implementation-specific optimizations.
+            </dd>
+            <dt>Reserved</dt>
+            <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
+            <dt>Timestamp</dt><dd>The current system time encoded as a 64-bit value. <!-- TODO --></dd>
+            <dt>Signer VoucherID</dt>
+            <dd>
+              The VoucherID of the active LV which is signing the handoff to the Upcoming VoucherID. Nodes using this ID for their active
+              LV SHOULD disregard any further advertised LVs with this ID upon receiving this packet. A receiver MUST ignore this packet
+              if the Signer VoucherID does not represent the active LV held in the cache of its receiving interface.
+            </dd>
+            <dt>Upcoming VoucherID</dt>
+            <dd>
+              The VoucherID of the upcoming LV which will be assuming 'active' status on the network after the transition window completes.
+            </dd>
+            <dt>DER-encoded Signature</dt>
+            <dd>
+              <!-- TODO -->
+            </dd>
+            <dt>Padding</dt>
+            <dd>
+              Any padding necessary to round the packet size up to the nearest 32-bit boundary. This value MUST be initialized to 0 by
+              senders and MUST be ignored by receivers.
+            </dd>
+          </dl>
         </section>
       </section>
     </section>
@@ -1218,14 +1430,7 @@ COMPUTE & CACHE:
       <name>Voucher Bearers</name>
       <t>
         A Voucher Bearer (VB) is the on-link node responsible for the current, majority-accepted Link Voucher. This
-        section introduces any VB constraints or procedures for implementations or deployments to maintain awareness of.
-      </t>
-      <t>
-        Any node MAY be elected to serve as the link's VB, whether by manual configuration or by a process of election
-        and appointment from the current VB (see <xref target="lovma-packets-vci"/>). If the current VB is NOT a router
-        or responsible for routing subnet traffic, then it MUST distribute the LV via an NDP Redirect packet with an LV
-        option, instead of using an NDP RA packet with the LV option. The Redirect is expected to behave similarly to
-        the defined NDP process (<!-- NDP section ref -->).
+        section introduces any VB constraints, recommendations, or other procedures for VBA implementations and deployments.
       </t>
 
       <section anchor="bearers-vigilance">
@@ -1235,10 +1440,24 @@ COMPUTE & CACHE:
           the Rogue RA Problem Statement in <xref target="RFC6104"/>. Networks need to protect against basic Rogue RAs
           in order to keep routing trusted and secured without high-complexity changes to the infrastructure. <!-- TODO -->
         </t>
+        <!-- TODO: what is it and why; brief paragraph -->
+        <t>
+          The RA-Guard system SHOULD be augmented and deployed with VBA-aware functions, capable of tracking the state
+          of Link Vouchers and elections on the LOVMA channel. This will allow an intermediate network device, such as
+          a switch, to only require RA-Guard Learning mode for a short initial period and then to subsequently "follow"
+          the correct LV around, similar to what other network nodes do.
+        </t>
+        <t>
+          The difference with RA-Guard in this scenario is to of course enable and disable RA/Redirect packet forwarding
+          when and where appropriate based on what the system understands about the state of vouchers on the network. One
+          notable exception to this, however, is that a RA-Guard implementation MAY drop its protections if and only if
+          the most recent and legitimate LV has expired without a successor VB. This is because some responsible VB needs
+          to be able to supersede a "dead" LV.
+        </t>
         <t>
           In the case where the elected VB is NOT a link router nor responsible for routing traffic, and NDP Redirect
-          packets are being used with the LV option, RA-Guard is RECOMMENDED to also include these in its learning
-          processes.
+          packets are being used with the LV option, RA-Guard is strongly RECOMMENDED to also include these in its
+          learning processes.
         </t>
         <t>
           The exact deployment of RA-Guard is beyond the scope of this document, but it is STRONGLY RECOMMENDED in
@@ -1246,9 +1465,25 @@ COMPUTE & CACHE:
         </t>
       </section>
 
-      <section anchor="bearers-timeouts">
-        <name>Timeouts or Expirations</name>
+      <section anchor="bearers-appointment">
+        <name>Appointments</name>
         <t>
+          Any node MAY be elected to serve as the link's VB, whether by manual configuration or by a process of election
+          and appointment from the current VB (see <xref target="lovma-packets-vci"/>). Current network VBs wishing to
+          transfer LV ownership to another responsible candidate VB MUST use the LOVMA channel and issue handoffs per the
+          election process (see <xref target="lovma-packets-vha"/>). Nodes MUST NOT be forced into VB responsibilities
+          without first offering their capability through their own LV option attachments or through valid LOVMA VCI packets.
+        </t>
+        <t>
+          If the current VB is NOT a router or responsible for routing subnet traffic, then it MUST distribute the LV via
+          an NDP Redirect packet with an LV option, instead of using an NDP RA packet with the LV option. The Redirect is
+          expected to behave similarly to the defined NDP process (<!-- NDP section ref -->).
+        </t>
+        <t>
+          VBs MAY at any time let their own LVs expire if they do not wish to elect another VB, or if there are no other
+          candidates available on the LOVMA channel. VBs SHOULD NOT let their own LVs expire without first appointing a
+          responsible successor node. If there is no successor, the most recent LV MUST remain current in the network until
+          another node assumes VB responsibility.
         </t>
       </section>
     </section>
@@ -1256,39 +1491,45 @@ COMPUTE & CACHE:
     <section anchor="optimizations">
       <name>Specification Optimizations</name>
       <t>
-        This section discusses the various optimizations built into Voucher-Based Addressing.
+        This section briefly lists and references the various optimizations built into this specification.
       </t>
 
-      <section anchor="optimizations-dad">
-        <name>Duplicate Address Detection Caching</name>
-        <t>
+      <dl newline="true">
+        <dt>Duplicate Address Detection &amp; Caching</dt>
+        <dd>
           The SLAAC DAD process is optimized to reduce the burden of regenerating another VBA from scratch.
-          See <xref target="behavioral-dad"/> for how this optimization functions as part of the core VBA
-          specification.
-        </t>
-      </section>
+          See <xref target="behavioral-dad"/> for how this optimization reduces the costs of DAD collisions.
+        </dd>
 
-      <section anchor="optimizations-lovma">
-        <name>Preemptive Notifications on the LOVMA</name>
-        <t>
-        </t>
-      </section>
+        <dt>The LOVMA Channel &amp; Preemption</dt>
+        <dd>
+          The LOVMA group affords various optimizations to the network. It enables the use of gratuitous handoffs for
+          VBA-enabled nodes to detect upcoming voucher changes (<xref target="lovma-packets-vha"/>). It allows hosts to
+          note their preferred iterations counts for upcoming address generations, new prefixes, and LV VB transitions
+          (<xref target="lovma-packets-vsr"/>). Lastly, it allows candidate nodes to become capable for VB election when
+          the current VB no longer wishes to maintain responsibility for the Link Voucher (<xref target="lovma-packets-vci"/>).
+        </dd>
 
-      <section anchor="optimizations-kdfs-et-al">
-        <name>Key Derivation Function Parameters</name>
-        <t>
-        </t>
-      </section>
+        <dt>Key Derviation Function Selections</dt>
+        <dd>
+          The options presented in <xref target="addenda-voucher-kdfs"/> permits VBs the flexibility to choose a baseline
+          "difficulty" setting for address generation and verification in their distributed LVs. From this baseline, which
+          implementations MAY establish through either default settings or some other network benchmarking, network nodes
+          are permitted to scale the difficulties of each address they generate based on their chosen iterations counts.
+        </dd>
 
-      <section anchor="optimizations-summaries">
-        <name>Voucher Summary Options</name>
-        <t>
-        </t>
-      </section>
+        <dt>Voucher Summary Options</dt>
+        <dd>
+          VS options (<xref target="addenda-summary"/>) allow hosts to exchange identifying information about the LVs used
+          to construct or verify the target address related to the current NDP Address Resolution exchange. This saves
+          computation time if the two hosts disagree on the ID of the active (and possibly upcoming) Link Voucher. Behavior
+          with this option is of course based on the IEMs of the two communicating interfaces during this exchange.
+        </dd>
+      </dl>
     </section>
 
     <section anchor="transitions">
-      <name>Transition Mechanisms</name>
+      <name>Transition Considerations</name>
       <t>
       </t>
     </section>
@@ -1338,6 +1579,7 @@ COMPUTE & CACHE:
 
       <section anchor="security-usurp">
         <name>Hijacking Link Vouchers</name>
+        <!-- Discuss de-sync in LV state as well: nodes in certain IEMs will NOT be able to communicate -->
         <t>
         </t>
       </section>
@@ -1488,10 +1730,16 @@ COMPUTE & CACHE:
       </references> -->
     </references>
 
+    <section anchor="appendix-speed">
+      <name>Testing Address Generation Speeds</name>
+      <t>
+      </t>
+    </section>
+
     <section anchor="appendix-randomness">
       <name>Validating Address Randomness</name>
       <t>
-        The following sections evaluate the statistical randomness of generated VBAs on the basis of a few
+        The following appendices evaluate the statistical randomness of generated VBAs on the basis of a few
         noted conditions. All results were acquired through use of the Dieharder suite of PRNG tests
         <!-- ref -->.
       </t>
