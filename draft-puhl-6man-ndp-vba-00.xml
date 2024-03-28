@@ -16,6 +16,7 @@
   <!ENTITY zwsp   "&#8203;">
   <!ENTITY nbhy   "&#8209;">
   <!ENTITY wj     "&#8288;">
+  <!ENTITY times  "&#215;">
 ]>
 
 <rfc
@@ -181,9 +182,9 @@
     <section anchor="summary">
       <name>Voucher-Based Addressing</name>
       <t>
-        This section outlines the design goals of Voucher-Based Addressing. It includes concrete processes and
-        procedures used by VBA-enabled network nodes to verify address ownership and to simultaneously create
-        private, pseudo-random network addresses.
+        This section outlines the design goals of Voucher-Based Addressing. It discusses requirements for network
+        interfaces related to VBAs. It also includes concrete processes and procedures used by VBA-enabled network
+        nodes to verify address ownership and to simultaneously create private, pseudo-random network addresses.
       </t>
 
       <section anchor="summary-overview">
@@ -209,6 +210,75 @@
           <!-- TODO -->
           <li>Generating a false link-layer address. </li>
         </ul>
+      </section>
+
+      <section anchor="summary-interfaces">
+        <name>Interface-level Configurations</name>
+        <t>
+          This section outlines different interface-level configurations and options which MUST be available in
+          any implementation of this specification.
+        </t>
+
+        <section anchor="summary-interfaces-state">
+          <name>Preserving Voucher-Related State</name>
+          <t>
+            VBA-enabled interfaces for all nodes, regardless of their selected Interface Enforcement Modes, are
+            REQUIRED to store the full state of the most current, validated Link Voucher. If a Link Voucher is not
+            available on-link, then no stored LV state is required and the node MUST enter the Address Awareness
+            Disabled state (see the next section). If a LV subsequently becomes available, the node MAY choose to
+            enter a different state or IEM based on the implementation.
+          </t>
+          <t>
+            The node responsible for the Link Voucher MAY at any time issue a handoff of that responsibility to
+            another node (see <xref target="lovma-packets-vha"/>). During the period of transition between the
+            previous Link Voucher and the upcoming one, VBA-enabled nodes MUST allow both LVs to be cached so
+            that VBAs using either LV become valid. Once the transition window ends, the amount of valid LVs will
+            return to 1.
+          </t>
+        </section>
+
+        <section anchor="summary-interfaces-mode">
+          <name>Interface Enforcement Modes</name>
+          <t>
+            Per-interface modes (IEMs) are able to granularly dictate the local NDP behaviors related to VBAs.
+            This flexibility in per-interface behavior grants VBAs more transition and adoption capabilities.
+            A tiny state machine diagram would depict all of these states as being transitionable to any of
+            the others.
+          </t>
+          <t>
+            Implementations MUST allow nodes to independently opt into any one of the following IEMs for EACH
+            of their local interfaces:
+          </t>
+          <dl newline="true">
+            <dt>AAD - Address Awareness Disabled</dt>
+            <dd>The VBA-aware interface MUST NOT generate or verify any addresses, regardless of the incoming
+              packets. It MUST NOT participate in any LOVMA traffic exchanges. In this mode, VBAs are ignored.
+              This mode SHALL always be used by VBA-enabled interfaces on links without an established LV.</dd>
+
+            <dt>AGO - Address Generation Only</dt>
+            <dd>The address generation procedure is followed for unicast addresses. The NDP Address Resolution
+              process MUST NOT be supplemented by VBA optimization or verification procedures.</dd>
+
+            <dt>AGV - Address Generation &amp; Verification</dt>
+            <dd>The address generation and verification procedures are followed as per this document. Address
+              Resolution is REQUIRED to fail if the advertised target link-layer address cannot be successfully
+              bound to the target IP address. This SHOULD be the canonical, default Enforcement Mode for VBAs.</dd>
+
+            <dt>AGVL - Address Generation &amp; Verification with Levels</dt>
+            <dd>Both address generation and verification procedures are employed, but verification failures MUST
+              NOT be strictly enforced during NDP Address Resolution. Neighbors whose VBA(s) successfully verify
+              MUST be marked or indicated locally as "Secured". A neighbor which fails to verify
+              MUST be indicated as "Unsecured" and given less trust or authority than "Secured" responses.</dd>
+          </dl>
+          <t>
+            For AGVL mode, the Secured and Unsecured distinction is inherited from SEND <xref target="RFC3971"/>.
+            If an AGVL interface receives multiple Neighbor Advertisement responses, it MUST strongly prefer Secured
+            NAs over Unsecured NAs to determine which link-layer address is legitimate during the Address Resolution
+            process. If multiple Secured responses are received, each with different link-layer addresses, then there
+            is a VBA collision and the behavior of the interface is undefined. In this rare case, the pool of Secured
+            responses might be equally valid, so it is left to the implementation to decide the correct course of action.
+          </t>
+        </section>
       </section>
 
       <section anchor="summary-generate">
@@ -425,68 +495,6 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           demonstrate VBA address verification.
         </t>
       </section>
-
-      <section anchor="summary-interfaces">
-        <name>Interface-level Configurations</name>
-        <t>
-          This section outlines different interface-level configurations and options which MUST be available in
-          any implementation of this specification.
-        </t>
-
-        <section anchor="summary-interfaces-state">
-          <name>Preserving Voucher-Related State</name>
-          <t>
-            VBA-enabled interfaces for all nodes, regardless of their selected Interface Enforcement Modes, are
-            REQUIRED to store the full state of the most current, validated Link Voucher. If a Link Voucher is not
-            available on-link, then no stored LV state is required and the node MUST enter the Address Awareness
-            Disabled state (see the next section). If a LV subsequently becomes available, the node MAY choose to
-            enter a different state or IEM based on the implementation.
-          </t>
-        </section>
-
-        <section anchor="summary-interfaces-mode">
-          <name>Interface Enforcement Modes</name>
-          <t>
-            Per-interface modes (IEMs) are able to granularly dictate the local NDP behaviors related to VBAs.
-            This flexibility in per-interface behavior grants VBAs more transition and adoption capabilities.
-            A tiny state machine diagram would depict all of these states as being transitionable to any of
-            the others.
-          </t>
-          <t>
-            Implementations MUST allow nodes to independently opt into any one of the following IEMs for EACH
-            of their local interfaces:
-          </t>
-          <dl newline="true">
-            <dt>AAD - Address Awareness Disabled</dt>
-            <dd>The VBA-aware interface MUST NOT generate or verify any addresses, regardless of the incoming
-              packets. It MUST NOT participate in any LOVMA traffic exchanges. In this mode, VBAs are ignored.
-              This mode SHALL always be used by VBA-enabled interfaces on links without an established LV.</dd>
-
-            <dt>AGO - Address Generation Only</dt>
-            <dd>The address generation procedure is followed for unicast addresses. The NDP Address Resolution
-              process MUST NOT be supplemented by VBA optimization or verification procedures.</dd>
-
-            <dt>AGV - Address Generation &amp; Verification</dt>
-            <dd>The address generation and verification procedures are followed as per this document. Address
-              Resolution is REQUIRED to fail if the advertised target link-layer address cannot be successfully
-              bound to the target IP address. This SHOULD be the canonical, default Enforcement Mode for VBAs.</dd>
-
-            <dt>AGVL - Address Generation &amp; Verification with Levels</dt>
-            <dd>Both address generation and verification procedures are employed, but verification failures MUST
-              NOT be strictly enforced during NDP Address Resolution. Neighbors whose VBA(s) successfully verify
-              MUST be marked or indicated locally as "Secured". A neighbor which fails to verify
-              MUST be indicated as "Unsecured" and given less trust or authority than "Secured" responses.</dd>
-          </dl>
-          <t>
-            For AGVL mode, the Secured and Unsecured distinction is inherited from SEND <xref target="RFC3971"/>.
-            If an AGVL interface receives multiple Neighbor Advertisement responses, it MUST strongly prefer Secured
-            NAs over Unsecured NAs to determine which link-layer address is legitimate during the Address Resolution
-            process. If multiple Secured responses are received, each with different link-layer addresses, then there
-            is a VBA collision and the behavior of the interface is undefined. In this rare case, the pool of Secured
-            responses might be equally valid, so it is left to the implementation to decide the correct course of action.
-          </t>
-        </section>
-      </section>
     </section>
 
     <section anchor="addenda">
@@ -557,7 +565,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
             <li>
               <t>Repeat this process 2 more times.</t>
               <ul spacing="compact">
-                <li>If an LV is received within a Router Advertisement response, accept and use the parameters of the received LV.
+                <li>If an LV is received within a Router Advertisement or Redirect response, accept and use the parameters of the received LV.
                   This condition means the sender MUST NOT send their own LV, nor should it propagate any instances of LV options.</li>
                 <li>
                   <t>If no LV is received after the 3 total attempts, and...</t>
@@ -584,16 +592,26 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
 
         <section anchor="addenda-voucher-receivers">
           <name>Processing Rules for Receivers</name>
-          <!-- TODO -->
           <t>
-            Receiving nodes MUST statefully maintain and update all LV information per interface, if and only if the received LV
-            is successfully verified according to its cryptographic signature.
+            A Link Voucher option appearing with any packet except NDP Router Advertisements or NDP Redirects MUST be ignored.
           </t>
-          <t>A Link Voucher option appearing with any packet except NDP Router Advertisements or NDP Redirects MUST be ignored.</t>
+          <t>
+            Nodes manually set to Address Awareness Disabled mode on their receiving interface MUST ignore LVs.
+          </t>
           <t>
             Nodes acting as authorized Voucher Bearers MUST disregard any received LV options on the links for which they are
-            already the responsible VB. When VBs interact with VBAs, whether generating or verifying, they MUST use their own
-            distributed LV for the interacting interface.
+            already the active, responsible VB.
+          </t>
+          <t>
+            Receiving nodes MUST statefully maintain and update all LV information per interface, if and only if the received LV
+            is successfully verified according to its cryptographic signature. The most recent, valid, and unexpired version of
+            the LV is what MUST always be cached on the receiving interface.
+          </t>
+          <t>
+            Segment VBs may occasionally wish to hand off responsibility for the Link Voucher to another VB through gratuitous
+            Voucher Handoff Advertisements (see <xref target="lovma-packets-vha"/>). These VHAs serve to enable a "sliding window"
+            where two LVs MAY be active on the same link at one time. During this window, both Link Vouchers MUST be considered
+            valid and cached accordingly.
           </t>
         </section>
 
@@ -701,11 +719,11 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
                       computation. This value SHALL NOT be set to 0. Receivers MUST consider Parallelism values of 0 to
                       automatically indicate a Parallelism of 1.
                     </dd>
-                    <dd>Padding</dd>
-                    <dt>
+                    <dt>Padding</dt>
+                    <dd>
                       8 bits (one octet) of padding initialized to zero. Senders MUST set this to 0. Receivers MUST ignore
                       this padding.
-                    </dt>
+                    </dd>
                     <dt>MemorySize</dt>
                     <dd>
                       A 32-bit integer representing the number of kibibytes used in the KDF computation. This value SHOULD be
@@ -836,8 +854,14 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
           <dl newline="true">
             <dt>Neighbor Solicitations</dt>
             <dd>
-              The receiving interface MUST disregard the NS if there is a non-zero VoucherID present and it does not match the
-              ID of the active Link Voucher of the receiving interface. To 'disregard' means to not respond to the NS at all.
+              <t>
+                The receiving interface MUST disregard the NS if there is a non-zero VoucherID present and it does not match the
+                ID of the active Link Voucher of the receiving interface. To 'disregard' means to not respond to the NS at all.
+              </t>
+              <t>
+                If the receiver is aware of a current Handoff Window on the link, then either the current voucher ID or the
+                upcoming voucher ID MUST be considered valid.
+              </t>
             </dd>
             <dt>Neighbor Advertisements</dt>
             <dd>
@@ -848,7 +872,7 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
                 Receivers MUST first inspect the IEM field to acquire the mode of the sending interface. If the IEM indicates an
                 AAD mode at the sender, the receiver MUST behave according to their own IEM:
               </t>
-              <dl newline="true" spacing="compact">
+              <dl newline="false" spacing="normal">
                 <dt>AAD</dt><dd>Ignore the VS option entirely.</dd>
                 <dt>AGO</dt><dd>Ignore the VS option since VBA verification is not being performed anyway.</dd>
                 <dt>AGV</dt><dd>Drop the packet. Do not cache the neighbor's details. Completely deny them.</dd>
@@ -858,6 +882,10 @@ Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
                 If the VoucherID field is initialized to zero, the VS option MUST be ignored. If the VoucherID value does not match
                 the ID of the active Link Voucher on the receiving interface, the VS option MUST be ignored. Otherwise, processing
                 proceeds to VBA verification per the receiver's IEM.
+              </t>
+              <t>
+                If the receiver is aware of a current Handoff Window on the link, then either the current voucher ID or the upcoming
+                voucher ID MUST be considered valid.
               </t>
             </dd>
             <dt>Any other NDP packet types</dt>
@@ -1156,6 +1184,12 @@ COMPUTE & CACHE:
               ]]>
             </artwork>
           </figure>
+
+          <section anchor="lovma-packets-vha-window">
+            <name>Link Voucher Handoff Windows</name>
+            <t>
+            </t>
+          </section>
         </section>
 
         <section anchor="lovma-packets-pvr">
@@ -1453,11 +1487,6 @@ COMPUTE & CACHE:
         </reference>       
       </references> -->
     </references>
-    
-    <section anchor="appendix-a">
-      <name>Appendix A</name>
-      <t></t>
-    </section>
 
     <section anchor="appendix-randomness">
       <name>Validating Address Randomness</name>
@@ -1468,11 +1497,11 @@ COMPUTE & CACHE:
       </t>
       <t>
         Each test procedurally selects starting values and iterates the "PBKDF2 with SHA-256" KDF with a static
-        multiplier of 256. The 'variable' condition will then be mutated pseudo-randomly each time all 2^16 possible
+        multiplier of 256. The 'variable' condition will then be mutated pseudo-randomly each time all 2<sup>16</sup> possible
         iterations counts have been calculated with the KDF.
       </t>
       <t>
-        Each test simulates 2^16 variations, for a total of 2^32 outputs (2^16 variations * 2^16 iterations per
+        Each test simulates 2<sup>16</sup> variations, for a total of 2<sup>32</sup> outputs (2<sup>16</sup> variations &times; 2<sup>16</sup> iterations per
         variation). VBA address generation procedures calculating these inputs write to a test file that records the
         address SUFFIXES as 64-bit decimal integers. That test file is then ultimately fed to Dieharder to run PRNG
         tests and thus generate these results.
@@ -1481,7 +1510,7 @@ COMPUTE & CACHE:
       <section>
         <name>Variable MAC, Fixed Seed, Fixed Subnet (VFF)</name>
         <t>
-          Per every set of 2^16 iterations counts, the input link-layer address (MAC in this case) is set to a new
+          Per every set of 2<sup>16</sup> iterations counts, the input link-layer address (MAC in this case) is set to a new
           pseudo-random value. This test shows the random distribution of VBAs on a single subnet with an unchanging
           Link Voucher seed value, among neighbors with unique MAC addresses.
         </t>
@@ -1498,7 +1527,7 @@ COMPUTE & CACHE:
       <section>
         <name>Fixed MAC, Variable Seed, Fixed Subnet (FVF)</name>
         <t>
-          Per every set of 2^16 iterations counts, the input Link Voucher Seed is set to a new pseudo-random value.
+          Per every set of 2<sup>16</sup> iterations counts, the input Link Voucher Seed is set to a new pseudo-random value.
           This test shows the random distribution of VBAs from a single node on a single subnet with a mutating seed.
         </t>
         <t>
@@ -1514,7 +1543,7 @@ COMPUTE & CACHE:
       <section>
         <name>Fixed MAC, Fixed Seed, Variable Subnet (FFV)</name>
         <t>
-          Per every set of 2^16 iterations counts, the input subnet PREFIX is mutated to a new pseudo-random value.
+          Per every set of 2<sup>16</sup> iterations counts, the input subnet PREFIX is mutated to a new pseudo-random value.
           This test shows the random distribution of VBAs from a single node on multiple varying subnet prefixes, with
           a fixed seed value.
         </t>
