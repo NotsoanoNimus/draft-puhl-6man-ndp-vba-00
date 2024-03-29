@@ -1739,10 +1739,10 @@ COMPUTE & CACHE:
         Name and Transport Protocol Port Number Registry":
       </t>
       <blockquote>
-        Service Name: vba_lovma
-        Port Number: 2196
-        Transport Protocol: UDP
-        Description: IPv6 Voucher-Based Addressing LOVMA updates
+        Service Name: vba_lovma<br />
+        Port Number: 2196<br />
+        Transport Protocol: UDP<br />
+        Description: IPv6 Voucher-Based Addressing LOVMA updates<br />
         Reference: draft-puhl-6man-ndp-vba-00
       </blockquote>
       <t>
