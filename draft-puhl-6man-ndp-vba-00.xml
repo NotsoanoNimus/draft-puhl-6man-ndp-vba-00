@@ -220,7 +220,7 @@
           information on local interfaces and outlines some specific details of the process.
         </t>
         <t>
-          Link Vouchers are defined in <see xref="addenda-voucher"/>.
+          Link Vouchers are defined in <xref target="addenda-voucher"/>.
         </t>
 
         <section anchor="summary-interfaces-mode">
@@ -1265,7 +1265,7 @@ COMPUTE & CACHE:
           </figure>
           <dl newline="true">
             <dt>Type</dt><dd>1</dd>
-            <dt>Length</dt>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.<dd>
+            <dt>Length</dt><dd>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.</dd>
             <dt>IEM</dt>
             <dd>
               A 3-bit value identifying the IEM of the sending interface. See <xref target="addenda-summary"/> for the possible IEM
@@ -1331,14 +1331,14 @@ COMPUTE & CACHE:
           </figure>
           <dl newline="true">
             <dt>Type</dt><dd>2</dd>
-            <dt>Length</dt>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.<dd>
+            <dt>Length</dt><dd>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.</dd>
             <dt>Reserved</dt>
             <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
             <dt>Timestamp</dt><dd><!-- TODO --></dd>
             <dt>Link Voucher Contents</dt>
             <dd>
               The entirety of the NDP Link Voucher option to be attached to Router Advertisements or Redirects. This also MUST include
-              the NDP Option Type and Length values. Validation of this field follows the same rules outlined by <xref target="addenda-vouchers"/>.
+              the NDP Option Type and Length values. Validation of this field follows the same rules outlined by <xref target="addenda-voucher"/>.
               Receivers MUST NOT expect the signature or public key of the LV option to be the same as that of the current LV, because
               this packet type is only announcing a node's candidacy for future election and it is NOT attempting to delcare a network LV.
               Receivers MUST ignore the entire VCI if validation of the embedded Link Voucher fails for any reason, including invalid
@@ -1399,7 +1399,7 @@ COMPUTE & CACHE:
           </figure>
           <dl newline="true">
             <dt>Type</dt><dd>3</dd>
-            <dt>Length</dt>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.<dd>
+            <dt>Length</dt><dd>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.</dd>
             <dt>Refresh Bit</dt>
             <dd>
               A single bit. When set to '1', it indicates that the transition is only a Link Voucher refresh and does not represent a
@@ -1701,8 +1701,10 @@ COMPUTE & CACHE:
       <table anchor="IANA-algo-type-registrations">
         <name>Initial Values of the "Algorithm Type Options" Subregistry</name>
         <thead>
-          <th>Type</th>
-          <th>Name/Identifier</th>
+          <tr>
+            <th>Type</th>
+            <th>Name/Identifier</th>
+          </tr>
         </thead>
         <tbody>
           <tr>
@@ -1756,9 +1758,11 @@ COMPUTE & CACHE:
       <table anchor="IANA-lovma-registrations">
         <name>Initial Values of the "LOVMA Message Types and Options" Subregistry</name>
         <thead>
-          <th>Type</th>
-          <th>Name/Identifier</th>
-          <th>Reference</th>
+          <tr>
+            <th>Type</th>
+            <th>Name/Identifier</th>
+            <th>Reference</th>
+          </tr>
         </thead>
         <tbody>
           <tr>
