@@ -182,7 +182,7 @@
       </t>
 
       <section anchor="summary-overview">
-        <name>Design Overview</name>
+        <name>Protocol Design</name>
         <t>
           A Voucher-Based Address is defined as any IPv6 unicast address derived from on-link voucher information.
           The address derivation process is driven by a static, well-known procedure parameterized by a mixture of
@@ -205,7 +205,7 @@
             'identity'.
           </t>
           <t>
-            This derivation process necessarily binds a generated IP address to a link-layer identifier. During the NDP
+            The derivation process necessarily binds a generated IP address to a link-layer identifier. During the NDP
             Address Resolution process, the goal is to associate a Target Address with a corresponding link-layer address
             to which frames can be forwarded at the link layer (see Section 7.2 of <xref target="RFC4861"/>).
           </t>
@@ -246,14 +246,15 @@
             Hashing a link-layer identifier and producing an output will only create a one-to-one binding, but many IPv6
             address generation schemes already offer ways to derive MANY privacy-focused addresses from the link-layer
             identifier (see, e.g., section 5 of  <xref target="RFC7217"/>). These addresses are usually NOT reversible,
-            by design, unless communicating nodes are aware of all parameters used as inputs to the PRFs. This is intended
+            by design, unless reversing nodes are aware of all input parameters for the underpinning PRF. This is intended
             to preserve the privacy of the address.
           </t>
           <t>
             But VBAs strike a careful balance of (1) keeping off-link nodes unaware of local Link Voucher information used in
             private address derivation, and (2) ensuring on-link nodes ARE aware of all parameters used to generate an address.
             Off-link nodes will be unaware of the VBA's bound link-layer identifier -- because they cannot receive NDP messages
-            -- and VBAs will always appear as random thanks to IP addresses using the outputs of deterministic hash functions.
+            nor can they determine it from the address itself -- and VBAs will always appear as random as a consequence of
+            using the outputs of deterministic hash functions.
           </t>
           <t>
             More to the point, simple hashing is elevated to using key derivation techniques, which allow a set of one-to-many
@@ -285,7 +286,7 @@
           <name>Address Collisions</name>
           <t>
             VBA derivation only preserves 48 bits from a resultant hash. While a collision is unlikely, nodes treat
-            this as they do the Duplicate Address Detection process: even if it is unlikely, it is possible and must
+            this as they do the Duplicate Address Detection process: even if it is unlikely, it is possible and MUST
             be handled appropriately.
           </t>
           <t>
@@ -297,7 +298,7 @@
           </t>
           <t>
             The employment of cryptographic KDFs drastically reduces the capacity for would-be attackers to discover
-            address collisions and use them for malicious (i.e., MITM) purposes. Section 3 of <xref target="RFC8018"/>
+            address collisions and use them for malicious purposes (i.e., on-path attacks). Section 3 of <xref target="RFC8018"/>
             defines a Key Derivation Function in the exact manner it applies to this specification:
           </t>
           <blockquote>
@@ -311,40 +312,145 @@
           <t>
             Thus KDFs are also applied to VBAs, rather than simply hashing an input Key/Salt combination, for the
             added purpose of slowing collision discoveries. This same tradeoff of requiring slightly more time for
-            address computation in order to protect against brute-force enumeration is employed in myriad password
-            storage systems (<!-- ref -->).
+            address computation in order to protect against brute-force enumeration is a strategy also utilized by
+            myriad password storage systems to protect user secrets (<!-- ref -->).
           </t>
           <t>
             To prevent any time-memory tradeoff attacks, the Link Voucher is distributed between nodes to ensure that
             generated addresses are ALWAYS generously salted by a 128-bit pseudo-random value, as well as the subnet
-            prefix, so they can never be pared down to a simple dictionary attack.
+            prefix, so they can never be pared down to a simple dictionary attack. This same value from the Link Voucher
+            also rotates occasionally to prevent long-term attacks.
           </t>
           <t>
-            Adjusting computation time of a single VBA to be approximately 20 milliseconds for the least powerful
-            network node (and subsequently an estimated 1 millisecond for the fastest) produces a negligible delay
-            in processing Neighbor Discovery messages for all hosts. At the same time, this theoretical time to
-            compute addresses hinders ANY node from being able to compute collisions expeditiously. This guarantees
+            An attacker searching for inputs producing a colliding address is therefore subjected to the misery of enumerating
+            many different link-layer addresses in order to generate an IP address that matches the target's 48-bit hash suffix.
+            This spoofed IP address must also embed the same iterations count as its target because it needs to be an equivalent
+            IP. If the target IP address contains a high iterations count, then this searching process will be even slower and
+            more unlikely to be successful. All the while, these collision-producing inputs must be obtained before the rotation
+            of the Link Voucher seed, which will reset the attacker's marathon entirely.
+          </t>
+          <t>
+            Link Vouchers also allow the specification of required on-link KDF algorithms and difficulties. This permits a
+            dynamic adjustment of the base computation time required to derive or verify a VBA. For example, adjusting computation
+            time to be approximately 20 milliseconds per address for the least powerful network node, and an estimated 1
+            millisecond for the fastest, produces a negligible delay in processing legitimate Neighbor Discovery messages
+            for all hosts. Simultaneously, this theoretical time taken to compute each address hamstrings any node,
+            regardless of computing power, from being able to compute collisions expeditiously. This guarantees
             responsiveness while also protecting node address ownership.
           </t>
           <t>
-            Following the above example, 1-millisecond address generation times for the most powerful hosts equates
-            to trying a mere 1,000 different link-layer identifiers per second (3,600,000 addresses per hour). If the
-            link-layer identifier in this case were a MAC address, 3.6M MACs computed is equivalent to about a millionth
-            of a percent of all possible addresses (2<sup>48</sup> when not accounting for reserved MAC addresses).
+            Following the above example, 1-millisecond address generation times for the most powerful on-link hosts
+            equates to trying a mere 1,000 variable link-layer identifiers per second (3,600,000 addresses per hour). If
+            the link-layer identifier in this case were a MAC address, 3.6M tried MAC addresses is equivalent to about a
+            millionth of a percent of all possible addresses (2<sup>48</sup> when not accounting for reserved MAC addresses).
           </t>
         </section>
 
         <section anchor="summary-overview-adversaries">
           <name>Concerning Adversaries</name>
           <t>
-            These different principles in this document cooperate to grant both: (1) a brute-force-resistant
-            solution to IPv6 address ownership in local networks, and (2) brute-force-resistant generation of
-            privacy-focused addresses. With the context of various NDP problem statements <!-- ref -->, consider the
-            following scenarios in deployments using Voucher-Based Addressing:
+            In an ideal network, VBA deployments would be unnecessary for the purpose of securing address ownership. One sample
+            trust model which may disregard VBA verifications is a small enterprise network wherein all link-layer-address-to-IP
+            bindings are entered statically. Another might be a private home network, where on-path attackers are very unlikely
+            to be lurking.
+          </t>
+          <t>
+            Address ownership applications notwithstanding, VBAs still offer a locally-verifiable manner of producing private
+            unicast addresses which share no potential correlation in user activity between rotations. Such a method might find
+            its own specific utilizations in other IPv6 protocols, the deployment of which could be easily adapted into support
+            for this specification's address ownership mechanisms when are where such proof of ownership becomes necessary.
+          </t>
+          <t>
+            The design choices for this specification cooperate to grant both: (1) a brute-force-resistant solution to IP
+            address ownership in local networks, and (2) a deterministic generation of rotatable, privacy-focused addresses
+            bound to link-layer identifiers. Item 2 is achieved as a byproduct of the VBA generation procedure, but Item 1
+            requires some modifications to the way Neighbor Discovery functions; in particular, it places greater emphasis
+            on guarding the Neighbor Cache.
+          </t>
+          <t>
+            The application of VBAs against adversaries must be explored from a top-level perspective before protocol
+            specificities are introduced. Notably, this exploration assumes a hypothetical VBA deployment that is using the
+            AGV Interface Enforcement Mode to enact full, strict protections on IPv6 address ownership
+            (<xref target="summary-interfaces-mode"/>).
+            With the context of the design goals of this document, of various NDP problem statements (Section 4 of
+            <xref target="RFC3756"/>), and of IPv6 address privacy concerns (<xref target="RFC8064"/>):
+            consider how Voucher-Based Addressing either proposes a resolution for a potential issue or encounters a
+            drawback.
           </t>
           <ul>
-            <!-- TODO -->
-            <li>Generating a false link-layer address. </li>
+            <li>
+              <t><tt>Sending Neighbor Advertisements or Solicitations with false link-layer addresses.</tt></t>
+              <t>
+                The sender of a NS can use a false Source Link-Layer Address option, while the sender of a NA can use a false
+                Target Link-Layer Address option. Since NDP specifies optimizations or instructions to enter these into the Neighbor
+                Cache on receipt (without verification), the protocol becomes vulnerable to abuse.
+              </t>
+              <t>
+                VBAs on-link are a way to force this purported binding in NA/NS packets to be verified. This specification
+                dictates that any cache-affecting ND instruction, or optimization to automatically accept link-layer address options,
+                be shimmed with the VBA verification process first. NDP packets which fail VBA verification are subsequently
+                dropped and do not update the Neighbor Cache.
+              </t>
+            </li>
+            <li>
+              <t><tt>Asserting a false link-layer address in Neighbor Unreachability Detection packets.</tt></t>
+              <t>
+                Malicious nodes can extend impersonation attacks against the target node by responding to NUD probes in order
+                to indicate continued reachability. Again, with VBAs this attack is not possible because of the imposed verification
+                requirements. If a NUD probe detects any change in address bindings -- i.e., the malicious node responds with
+                an IP or link-layer address that is different from the original cache entry -- the target node will drop the packet
+                and will not update nor refresh its Neighbor Cache with the unverified information.
+              </t>
+            </li>
+            <li>
+              <t><tt>Correlating unicast address activities long-term on the public internet.</tt></t>
+              <t>
+                <xref target="RFC8064"/> discusses four primary problems of deriving IP addresses from link-layer identifiers:
+                network activity correlation, location tracking, address scanning, and device-specific vulnerability exploitation.
+                The applicability of this discussion, however, only applies to addresses from which ANY off-link node can derive
+                the link-layer identifier directly. VBAs are created using an irreversible hashing function, and therefore
+                link-layer identifiers are not recoverable by off-link nodes.
+              </t>
+              <t>
+                Stable VBAs do not truly exist unless the Link Voucher on-link is also stable. In such a case, addresses being
+                generated by the VBA derivation process are still considered statistically random. Nodes employing these addresses
+                also have the choice to choose a different iterations count embedded within their addresses, changing them at-will
+                despite the stable Link Voucher details.
+              </t>
+            </li>
+            <li>
+              <t><tt>Nodes who are 'killed' or go offline are impersonated.</tt></t>
+              <t>
+                When a node goes offline, there is no consequence for a malicious node spoofing its link-layer identifier. This
+                is a problem for this specification and for any other address ownership methodology relying on link-layer address
+                bindings. It is indeed where more convoluted solutions relying on Public-Key infrastructure, like Cryptographically
+                Generated Addresses <xref target="RFC3972"/>, tend to thrive by certifying addresses NOT coupled to any link-layer
+                attributes.
+              </t>
+              <t>
+                VBA address ownership mechanisms are designed primarily to prevent active, TRANSPARENT spoofing; that is,
+                to stop the interception of traffic between two online links without disrupting traffic between either party.
+                As mentioned previously, VBAs do NOT certify link-layer address bindings, and they rely solely on the
+                principle that two link-layer devices CANNOT share the same identifier at the same time. Certifying addresses
+                or using other monitoring technologies to detect when nodes are 'killed'/spoofed at the link layer are beyond
+                the scope of this specification.
+              </t>
+              <t>
+                Most important to mitigate are on-path attacks between hosts and the default gateway of a network. 'Killing' the
+                default router for long enough to maintain an active spoof of its link-layer address is somewhat impractical unless
+                the malicious host has another means to gateway the intercepted packets to the wider internet. For example, a public
+                coffee shop network may only have one subnet router; attackers disabling the router and receiving forwarded packets
+                would need to route those packets to another connected network that has internet access.
+              </t>
+              <t>
+                A point of emphasis about VBAs in this regard is their ability to control NDP traffic redirection attacks, without
+                relying on a trust model that uses MAC address filtering or something similar. VBAs assume the network is always open
+                to any link-layer address and aims to prevent the openness of the link-layer from being abused to spoof Neighbor
+                Cache entries. Networks employing MAC address allow-lists, for example, probably have no need for VBAs at all.
+                Conversely, networks employing Network Access Controls (<!-- https://ieeexplore.ieee.org/document/9018454/figures#figures -->) might find a
+                significant benefit in using VBAs to secure the link layer and subsequently the network layer.
+              </t>
+            </li>
           </ul>
         </section>
       </section>
@@ -745,8 +851,8 @@ Formulas:
    0                   1                   2                   3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |    Length     |   Pad Length  |    Reserved   |
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |     Type      |    Length     |                               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
   |                            Reserved                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |                        32-bit Expiration                      |
@@ -1449,8 +1555,8 @@ COMPUTE & CACHE:
    0                   1                   2                   3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |      Type     |     Length    |          Reserved             |
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |      Type     |     Length    |                               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
   |                            Reserved                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |                                                               |
@@ -2022,11 +2128,14 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3972.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6105.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6104.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7217.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3756.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8064.xml"/>
         <!-- Default KDF Definitions -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9106.xml"/>
@@ -2159,6 +2268,15 @@ COMPUTE & CACHE:
         <t>
         </t>
       </section>
+    </section>
+
+    <section anchor="acknowledgements" numbered="false">
+      <!-- [REPLACE/DELETE] an Acknowledgements section is optional -->
+      <name>Acknowledgements</name>
+      <t>
+        The author would like to thank Dr. Jinhua Guo of the University of Michigan for his valuable,
+        constructive criticisms and support of this proposal during its formative stages.
+      </t>
     </section>
  </back>
 </rfc>
