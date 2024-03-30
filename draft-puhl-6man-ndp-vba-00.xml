@@ -63,7 +63,7 @@
         derivation process. Cryptographic key derivation functions are used to generate pseudo-random addresses and
         to stretch address computation times. Host parameters can be used to derive any number of both stable
         and ephemeral, privacy-focused addresses for each on-link prefix and at the link-local scope. NDP
-        exchanges can then verify the interface-identifier-to-IP bindings to prevent on-path attacks in local
+        exchanges can then verify the link-layer-address-to-IP bindings to prevent on-path attacks in local
         networks.
       </t>
     </abstract>
@@ -262,7 +262,7 @@
             can then be embedded in resultant IP addresses, such that the following three components are an inherent value
             exchanged in any NDP Address Resolution communication:
           </t>
-          <ul compact="true">
+          <ul spacing="compact">
             <li>The Target Link Layer Address.</li>
             <li>A portion of the KDF output (using the other on-link input parameters).</li>
             <li>The Iterations Count used to compute the address.</li>
@@ -552,7 +552,7 @@ Address composition:
   where:
     PREFIX is the 64-bit subnet prefix. If the subnet length is
               shorter than 64 bits, the rest of the 64-bit field
-              MUST be initialized to 0.
+              MUST be initialized to a pseudo-random value.
     SUFFIX is the first 8 bytes from the result of a Key Derivation
               Function (KDF) 'K' iterated 'L' times. The leftmost
               hextet is replaced by 'Z'.
@@ -564,7 +564,7 @@ Formulas:
           |---> Key  = The 128-bit Link Voucher seed value.
           `---> Salt = [LLID] || 'v' || 'b' || 'a' || [PREFIX]
 
-    Z  =  ~(L ^ H[2..3])
+    Z  =  ~(L ^ Key[0..1])
 
     SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
                             `--> (using 0-based indexing)
@@ -577,10 +577,10 @@ Formulas:
         <ul>
           <li>
             <t>
-              A 16-bit 'Z' value, calculated as a bitwise complement of the XOR of the 'L' value and the second hextet
-              of the hash 'H'. This calculation uses this XOR computation to ensure the same iterations count 'L' between
-              different KDF results will be unique and provide some resistance to tracking hosts between each generated
-              hash. This is especially true if the host locally advertises a well-known or 'sticky' iterations count
+              A 16-bit 'Z' value, calculated as a bitwise complement of the XOR of the 'L' value and the first hextet
+              of the LV seed. This calculation uses this XOR computation to ensure the same iterations count 'L' between
+              different LV seeds will be unique and provide some resistance to tracking hosts between each varying LV
+              seed. This is especially true if the host locally advertises a well-known or Preferred Iterations Count
               (<xref target="lovma-packets-vsr"/>).
             </t>
             <ul>
@@ -603,7 +603,7 @@ Formulas:
         </t>
         <ol>
           <li>A host connects to a VBA network and obtains Link Voucher details (<xref target="addenda-voucher"/>).</li>
-          <li>The 'L' value is chosen based on (1) host preference, (2) intended difficulty, or (3) randomly.</li>
+          <li>The 'L' value is chosen based on (1) host preference, (2) intended difficulty, or (3) random selection.</li>
           <li>The Link Voucher details contain instructions for which KDF to use and which 128-bit seed value to use.</li>
           <li>
             <t>
@@ -613,7 +613,7 @@ Formulas:
             <ul spacing="compact">
               <li>
                 The raw link-layer identifier of the network interface for which addresses are being generated.
-                Note that since the Salt value is a variable-length string, this is NOT REQUIRED to be a MAC
+                Note that since the Salt value is a variable-length string, this is NOT REQUIRED to be an IEEE 802 MAC
                 address, but it MUST represent the link-layer address to which the IPv6 address will be bound.
               </li>
               <li>The string "vba".</li>
@@ -627,11 +627,11 @@ Formulas:
             <ul spacing="compact">
               <li>
                 The first 16 bits are the bitwise complement of an XOR between the iterations count 'L' and the
-                second hextet of the generated KDF hash.
+                first hextet of the LV seed.
               </li>
               <li>
                 The least significant 48 bits are 6 sequential bytes from the KDF hash, skipping the first two
-                bytes in the sequence.
+                bytes (hextet) in the sequence.
               </li>
             </ul>
           </li>
@@ -678,18 +678,18 @@ Formulas:
  +---+-> [solicit] --' <====|=== (solicited-node)
  |   |      (1)             |
  |   |                      |
- |   +---------.            |
- |   |         |            |
- |   |  +~~~~~~V~~~~~~~~~~~~+~~~~~~~~~~~+
- `---+->| H := LV.K(        | [rebuild  |
- (3) |  |   L := Z'(B),     |  addr B]  |
+ |   +---------+-------.    |
+ |   |         |       |    |
+ |   |  +~~~~~~V~~~~~~~|~~~~+~~~~~~~~~~~+
+ `---+->| H := LV.K(   V    | [rebuild  |
+ (3) |  |   L := Z'(B, LV), |  addr B]  |
      `--+-> LV.seed,   v----'           |
         |   makeSalt(MAC, prefix(B))    |
         | );                            |
         +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
             |
             |      +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-            `----> | [prefix(B) || suffix(Z(L, H), H)] === B |
+            `----> | [prefix(B) || suffix(Z(L, LV), H)] == B |
                    +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
                         (4)  {????}
                               |  |
@@ -710,36 +710,13 @@ Formulas:
           opposite purposes for each function.
         </t>
         <dl newline="true">
-          <dt>Z(L, H) = ~(L ^ H[2..3])</dt>
-          <dd>Returns a hextet to insert into a generated address. A bitwise complement of an iterations count
-            XOR'd with the second hextet of an output KDF hash 'H'.</dd>
-          <dt>Z'(B) = ~(B[8..9] ^ B[10..11])</dt>
+          <dt>Z(L, LV) = ~(L ^ LV.seed[0..1])</dt>
+          <dd>Returns a hextet to insert into a generated address. A bitwise complement of the result of an iterations
+            count XOR'd with the first hextet of a Link Voucher seed value.</dd>
+          <dt>Z'(B, LV) = ~(B[8..9] ^ LV.seed[0..1])</dt>
           <dd>Returns an iterations count derived from a full IPv6 address. In this case, 'B[8..9]' is equal to
-            the length and position of the hextet calculated by the function 'Z' above.</dd>
+            the length and position of the embedded hextet calculated by the function 'Z' above.</dd>
         </dl>
-        <t>
-          See the figure below for a visualization of calculating Z' from a Voucher-Based Address.
-        </t>
-        <figure>
-          <name>Extracting the Embedded Iterations Count (Z')</name>
-          <artwork type="ascii-art" name="embeddedIterations.txt">
-            <![CDATA[
-                                  SUFFIX
-                       _____________/\____________
-                      /                           \
-Byte: 0      ..     7 8    9    10   11   12 .. 15
-      +------ ~ ------+----+----+----+----+-- ~ --+
-Addr: |  PREFIX (64)  |  Z (16) |     H (48)      |
-      +------ ~ ------+----+----+----+----+-- ~ --+
-                      \________/\________/
-                           |         |
-                   Z or B[8..9]  B[10..11]
-
-    Z'  =  L  =  NOT( B[8..9] XOR B[10..11] )
-                  or NOT( SUFFIX[0..1] XOR SUFFIX[2..3] )
-            ]]>
-          </artwork>
-        </figure>
         <t>
           Z' is necessarily computed for each VBA verification because the 'L' value is a required component to
           reconstruct the solicited address of the Target Node.
