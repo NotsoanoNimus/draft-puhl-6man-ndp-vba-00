@@ -95,11 +95,11 @@
         IPv6 address suffixes appearing statistically random to devices outside the local broadcast domain, who
         are by design unaware of all input parameters associated with the address.
       </t>
-      <t>
+      <!-- <t>
         This document represents an application of cryptographic key-stretching methodologies to IPv6 address
         generation. The result is a secure, high-impact, low-complexity change bundled with various transition
         capabilities, effectively corroborating IPv6 address ownership to defeat malicious network address spoofing.
-      </t>
+      </t> -->
       <t>
         This document introduces Voucher-Based Addressing (VBA) in IPv6 networks as an optional functionality for Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/>.
       </t>
@@ -210,30 +210,84 @@
             to which frames can be forwarded at the link layer (see Section 7.2 of <xref target="RFC4861"/>).
           </t>
           <t>
-            Because deterministic address generation directly depends on the value of the link-layer identifier of the
+            Because deterministic VBA generation directly depends on the value of the link-layer identifier of the
             node, purported network and target link-layer addresses cannot be falsified in NDP address resolutions. Address
             verification is a process parameterized by (1) data which identifies the node's network interface, and (2)
-            data which lies OUTSIDE of the generating node's administration. Such information comprises a part of the
+            data which lies OUTSIDE of the generating node's administration. Such 'outside' information is listed in the
             Link Voucher details agreed upon by all neighbors.
           </t>
           <t>
             Due to this principle of link-layer address binding in generating VBAs, it is impossible to report an association
             of an IP address to a link-layer address that cannot be bound to it. This means NDP Address Resolution exchanges
-            are safe from false ownership issues. A host wishing to contact a particular IP address can no longer be subversively
+            are safe from issues of impersonation. A host wishing to contact a particular IP address can no longer be subversively
             redirected to a different receiver at a lower level of the network stack.
           </t>
         </section>
 
         <section anchor="summary-overview-cryptography">
-          <name>Applications of Alternative Cryptography</name>
+          <name>Key Derivation Functions &amp; Address Privacy</name>
           <!-- Touch on addresses using a hash function to gen PR addrs. Briefly review KDFs vs plain hashing. -->
           <t>
-            [But we don't want to just pull addresses straight out of the LLID like EUI64. We need privacy and difficulty...]
+            Link-layer bindings using a simple embedding or hashing scheme should suffice if the goals of VBAs stopped at
+            address ownership. For example, modified EUI-64 interface identifiers are formed by a long-established address
+            derivation methodology which uses the link-layer identifier of an underlying interface; see Section 2.5.1 of
+            <xref target="RFC4291"/>. However, a design goal of this document is to contemporaneously establish a
+            privacy-focused address generation procedure that will obscure the link-layer identifier and create rotatable
+            addresses.
+          </t>
+          <t>
+            For this requirement, VBAs employ cryptographic hashing during the address generation process to create a
+            pseudo-random output address. This address, while still relatively fixed and lacking dynamic derivation,
+            does not immediately allow outside trackers to know the link-layer identifier of the node. Using cryptographic
+            hashing and key derivation techniques also ensures that any link-layer identifier of arbitrary length could be
+            reliably bound to an address suffix that is fixed at 64 bits in length.
+          </t>
+          <t>
+            Hashing a link-layer identifier and producing an output will only create a one-to-one binding, but many IPv6
+            address generation schemes already offer ways to derive MANY privacy-focused addresses from the link-layer
+            identifier (see, e.g., section 5 of  <xref target="RFC7217"/>). These addresses are usually NOT reversible,
+            by design, unless communicating nodes are aware of all parameters used as inputs to the PRFs. This is intended
+            to preserve the privacy of the address.
+          </t>
+          <t>
+            But VBAs strike a careful balance of (1) keeping off-link nodes unaware of local Link Voucher information used in
+            private address derivation, and (2) ensuring on-link nodes ARE aware of all parameters used to generate an address.
+            Off-link nodes will be unaware of the VBA's bound link-layer identifier -- because they cannot receive NDP messages
+            -- and VBAs will always appear as random thanks to IP addresses using the outputs of deterministic hash functions.
+          </t>
+          <t>
+            More to the point, simple hashing is elevated to using key derivation techniques, which allow a set of one-to-many
+            link-layer identifier to IP address bindings. This is because KDFs often accept an input iterations count that
+            specifies how many times the PRF or hashing function should be iterated <xref target="RFC8018"/>. Iterations counts
+            can then be embedded in resultant IP addresses, such that the following three components are an inherent value
+            exchanged in any NDP Address Resolution communication:
+          </t>
+          <ul compact="true">
+            <li>The Target Link Layer Address.</li>
+            <li>A portion of the KDF output (using the other on-link input parameters).</li>
+            <li>The Iterations Count used to compute the address.</li>
+          </ul>
+          <t>
+            Addresses using this generation process therefore enforce that all three items are the same input value -- along
+            with on-link Link Voucher details -- to produce the same output address. Each increment or decrement of the embedded
+            Iterations Count value produces an entirely new, seemingly random address. Nodes falsifying any of the input values
+            will be rejected by enforcing neighbors seeking to resolve and verify link-layer addresses for certain target IP addresses.
+          </t>
+          <t>
+            The VBA verification requirement in this document simply repeats the address generation procedure, using
+            inputs known to the verifying node about the target node. As stated in the previous section, some of these
+            parameters are indeed under the control of the target node; others are distributed on the network in a Link
+            Voucher by a trusted authority.
           </t>
         </section>
 
         <section anchor="summary-overview-collisions">
-          <name>Hashing &amp; Collisions</name>
+          <name>Address Collisions</name>
+          <t>
+            VBA derivation only preserves 48 bits from a resultant hash. While a collision is unlikely, nodes treat
+            this as they do the Duplicate Address Detection process: even if it is unlikely, it is possible and must
+            be handled appropriately.
+          </t>
           <t>
             Potential hash collisions expose a potential weakness of Voucher-Based Addressing. VBAs inherently bind 
             link-layer addresses upward to interface IP addresses through a deterministic process and nothing else
@@ -244,7 +298,7 @@
           <t>
             The employment of cryptographic KDFs drastically reduces the capacity for would-be attackers to discover
             address collisions and use them for malicious (i.e., MITM) purposes. Section 3 of <xref target="RFC8018"/>
-            outlines a Key Derivation Function in the exact way it was meant to also be applied to this specification:
+            defines a Key Derivation Function in the exact manner it applies to this specification:
           </t>
           <blockquote>
               Another approach to password-based cryptography is to construct key
@@ -252,15 +306,18 @@
               increasing the cost of exhaustive search.  One way to do this is to
               include an iteration count in the key derivation technique,
               indicating how many times to iterate some underlying function by
-              which keys are derived.  A modest number of iterations (say, 1000) is
-              not likely to be a burden for legitimate parties when computing a
-              key, but will be a significant burden for opponents.
+              which keys are derived.
           </blockquote>
           <t>
-            Thus, KDFs are applied to VBAs rather than simply hashing the input Key/Salt combination for the exact
-            purpose of slowing collision discoveries. This same tradeoff of requiring slightly more time for address
-            computation in order to protect against brute-force enumeration is employed in myriad password storage
-            systems (<!-- ref -->).
+            Thus KDFs are also applied to VBAs, rather than simply hashing an input Key/Salt combination, for the
+            added purpose of slowing collision discoveries. This same tradeoff of requiring slightly more time for
+            address computation in order to protect against brute-force enumeration is employed in myriad password
+            storage systems (<!-- ref -->).
+          </t>
+          <t>
+            To prevent any time-memory tradeoff attacks, the Link Voucher is distributed between nodes to ensure that
+            generated addresses are ALWAYS generously salted by a 128-bit pseudo-random value, as well as the subnet
+            prefix, so they can never be pared down to a simple dictionary attack.
           </t>
           <t>
             Adjusting computation time of a single VBA to be approximately 20 milliseconds for the least powerful
@@ -271,8 +328,9 @@
           </t>
           <t>
             Following the above example, 1-millisecond address generation times for the most powerful hosts equates
-            to trying a mere 1,000 different link-layer identifiers per second (3,600,000 addresses per hour). This
-            is about a millionth of a percent of possible addresses.
+            to trying a mere 1,000 different link-layer identifiers per second (3,600,000 addresses per hour). If the
+            link-layer identifier in this case were a MAC address, 3.6M MACs computed is equivalent to about a millionth
+            of a percent of all possible addresses (2<sup>48</sup> when not accounting for reserved MAC addresses).
           </t>
         </section>
 
@@ -1991,6 +2049,7 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6105.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6104.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7217.xml"/>
         <!-- Default KDF Definitions -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9106.xml"/>
