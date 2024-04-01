@@ -21,7 +21,7 @@
 
 <rfc
   xmlns:xi="http://www.w3.org/2001/XInclude"
-  category="std"
+  category="exp"
   docName="draft-puhl-6man-ndp-vba-00"
   ipr="trust200902"
   obsoletes=""
@@ -429,17 +429,23 @@
             <t>
               When a node goes offline, there is no consequence for a malicious node spoofing its link-layer identifier. This
               is a problem for this specification and for any other address ownership methodology relying on link-layer address
-              bindings. It is indeed where more convoluted solutions relying on Public-Key infrastructure, like Cryptographically
+              bindings. It is indeed where more convoluted solutions relying on asymmetric cryptography, like Cryptographically
               Generated Addresses <xref target="RFC3972"/>, tend to thrive by certifying addresses NOT coupled to any link-layer
               attributes.
             </t>
             <t>
               VBA address ownership mechanisms are designed primarily to prevent active, TRANSPARENT spoofing; that is,
               to stop the interception of traffic between two online links without disrupting traffic between either party.
-              As mentioned previously, VBAs do NOT certify link-layer address bindings, and they rely solely on the
+              As mentioned previously, VBAs do NOT certify link-layer address bindings, and they are based on the
               principle that two link-layer devices CANNOT share the same identifier at the same time. Certifying addresses
               or using other monitoring technologies to detect when nodes are 'killed'/spoofed at the link layer are topics
               beyond the scope of this specification.
+            </t>
+            <t>
+              This specification introduces the optional concept of "NDP Sessions" (<xref target="addenda-session"/>). Beneath
+              the VBA verification procedure is a supporting cryptographic hash-chaining function that allows two nodes to
+              securely share NDP messages and updates with each other. This is a weak security because the session security
+              that backs NDP exchanges relies strictly on the first contact between the two nodes to be honest from the start.
             </t>
             <t>
               Most important to mitigate are on-path attacks between hosts and the default gateway of a network. 'Killing' the
@@ -452,9 +458,7 @@
               A point of emphasis about VBAs in this regard is their ability to control NDP traffic redirection attacks, without
               relying on a trust model that uses MAC address filtering or something similar. VBAs assume the network is always open
               to any link-layer address and aims to prevent the openness of the link-layer from being abused to spoof Neighbor
-              Cache entries. Networks employing MAC address allow-lists, for example, probably have no need for VBAs at all.
-              Conversely, networks employing Network Access Controls (<!-- https://ieeexplore.ieee.org/document/9018454/figures#figures -->) might find a
-              significant benefit in using VBAs to secure the link layer and subsequently the network layer.
+              Cache entries, through both address binding and pre-established sessions.
             </t>
           </section>
         </section>
@@ -1290,6 +1294,207 @@ Formulas:
           </dl>
         </section>
       </section>
+
+      <section anchor="addenda-session">
+        <name>Session Option</name>
+        <t>
+          The Session option MAY be included in Neighbor Solicitations or Neighbor Advertisements to indicate
+          preference for a secured NDP Session between two on-link nodes.
+        </t>
+        <figure>
+          <name>Structure of the NDP Link Voucher option</name>
+          <artwork type="ascii-art" name="sessionOption.txt">
+            <![CDATA[
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |     Type      |    Length     |P|   Reserved  | ExpirationMin |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                            Reserved                           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |           CounterMax          |            Counter            |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                          CurrentHash                          |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                           FinalHash                           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                            NewHash                            |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+            ]]>
+          </artwork>
+        </figure>
+        <dl newline="true">
+          <dt>Type</dt><dd>65</dd>
+          <dt>Length</dt><dd>3. The total length of the Session option from the Type through its end -- inclusive -- in units of 8 octets.</dd>
+          <dt>P</dt>
+          <dd>
+            Persistent bit. When this is a new session, indicates the exchange is intended to establish a 'strict' and ongoing NDP session.
+            The Session option will be required on all subsequent NDP exchanges, and cannot be overridden unless done manually.
+          </dd>
+          <dt>Reserved</dt>
+          <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
+          <dt>ExpirationMin</dt>
+          <dd>
+            If the session is NOT perisistent, then the amount of time it takes, in minutes, for the ND Session to become invalidated.
+            If the session IS persistent, then this field MUST be ignored.
+          </dd>
+          <dt>CounterMax</dt>
+          <dd>Big-endian. The amount of times a secret Root Hash H<sub>0</sub> is iterated to produce the Final Hash H<sub>CounterMax</sub>.</dd>
+          <dt>Counter</dt>
+          <dd>
+            Big-endian. MUST be less than CounterMax. The amount of SHA-256 hash iterations over the CurrentHash that is required to form
+            the FinalHash. If this value is set to 0, then the CurrentHash MUST be set to the chain's Root Hash and NewHash MUST be the new
+            FinalHash value of the next chain with the same CounterMax iterations length.
+          </dd>
+          <dt>CurrentHash</dt><dd>The input hash which, when iterated by SHA-256 Counter times, will produce the FinalHash.</dd>
+          <dt>FinalHash</dt><dd>The Final Hash from the set computed with Counter SHA-256 iterations.</dd>
+          <dt>NewHash</dt>
+          <dd>
+            When CurrentHash equals the Root Hash of the current chain and Counter is equal to CounterMax, this value MUST be a new
+            FinalHash to use for the next chain, which MUST inherit the CounterMax value currently being used.
+          </dd>
+        </dl>
+
+        <section anchor="addenda-session-rules">
+          <name>Explanation &amp; General Guidelines</name>
+          <t>
+            VBAs protect the local network from on-path traffic redirection attacks that seek to intercept packets. They are, however,
+            vulnerable to identity assumption attacks, where a node can be 'killed' (removed from the network maliciously) and the
+            malicious node is free to assume its link-layer identifier, thus resulting in the same on-path attacks VBAs aim to thwart.
+            This is a result of the VBA link-layer bindings only requiring the node with the valid link-layer address to be the one
+            communicating. To mitigate this, two hosts MAY establish private, unicast-only hash chains that can be used to prove each
+            other's identities without using public-key cryptography.
+          </t>
+          <t>
+            Neighbor Discovery Sessions use two-way reverse hash chains to prove the ongoing exchange of all NUD or NDP Address Resolution
+            packets are still private between the two original interfaces. These reverse hash chains were first theoretically applied to IPv6
+            addresses in <!-- https://link.springer.com/chapter/10.1007/3-540-45807-7_3 -->. Chains are small and lightweight to compute, but
+            difficult to reverse or spoof thanks to the one-way nature of hashing functions.
+          </t>
+          <t>
+            A 'reverse hash chain' consists of a series of one-way iterative hashes. The 'final hash' of the chain represents a terminal
+            value which all ancestor hashes -- or 'links', to follow the chain analogy -- will arrive to with some Counter value of iterations.
+            It is a public and essential value for verifying nodes to be aware of.
+          </t>
+          <t>
+            The node creating the hash chain will be aware of its initial parameters. The first created hash is known as the 'Root Hash' and
+            is essential knowledge for deriving the rest of the chain values iteratively. The Root Hash then acts as a sort of 'password' to
+            the rest of the chain, so it MUST be kept secret until the session's chain is exhausted.
+          </t>
+          <t>
+            Nodes can prove communication with an honest and genuine host (who owns a link-layer address) by asking for a hash chain value
+            they do not know yet. And once the chain is exhausted, meaning either (1) the Root Hash would be next in line to reveal or (2) the
+            chain is about to expire, the Root Hash is subsequently revealed in order to set a NewHash value. The NewHash value is equivalent
+            to the FinalHash value of a new chain that is also CounterMax iterations in length.
+          </t>
+          <figure anchor="session-chaining">
+            <name>A Visualization of Hash Chaining</name>
+            <artwork type="ascii-art" name="hashChains.txt">
+              <![CDATA[
+R   =  [a pseudo-random secret]
+e   =  Expiration of the chain, in minutes.
+c   =  [some integer; 0 < c < 2^16]
+ `----> A chain seeded by R using c total iterations,
+        that expires after 'e' minutes.
+
+p   =  c || e (concatenation of 'c' & 'e' as decimal strings)
+
+H_n+1 = SHA256(H_n || p)
+H_0  =  SHA256(R || p)
+  `----> Also known as the 'Root Hash'.
+
+Therefore, the 'Final Hash' is H_c:
+  H_c =  SHA256(SHA256( ... SHA256(H_0 || p) ... || p) || p)
+
+CHAIN ACCORDING TO GENERATOR:
+         (==)(= ... =)(==)(==)(==)(==)(==)(==)
+          |            |   |   |   |   |   |
+    H_:   0       ... c-5 c-4 c-3 c-2 c-1  c
+
+SAME CHAIN ACCORDING TO RECEIVERS:
+  [assuming the receiver gets H_x]
+    ... ??? =)(==)(==)(==)(==)(==)
+               |   |   |   |   |
+    H_:        x  x+1 x+2 x+3  c 
+
+Holders of the Root Hash are always able to determine
+  any value of H_t where {0 <= t <= c}. Receivers who
+  know some intermediate hash H_x, where {0 < x <= c},
+  are only able to determine H_y where {x <= y <= c}.
+              ]]>
+            </artwork>
+          </figure>
+          <t>
+            The following list outlines some general requirements for two-way NDP Sessions:
+          </t>
+          <ul>
+            <li>
+              Information related to Session options MUST be stored persistently on-disk. It MUST NOT be deleted until the session expires.
+              This information includes: local Root Hash, local Counter, local CounterMax, local ExpirationMin, remote Counter &amp; remote
+              FinalHash.
+            </li>
+            <li>
+              Session options MUST be used only with unicast ND traffic, with the exception of the initial multicast Neighbor Solicitation to
+              find a target node's Target Link-Layer Address information. If Session options appear in any other multicast exchange, they MUST
+              be ignored by receivers.
+            </li>
+            <li>
+              SHA-256 MUST be used exclusively for all hash chaining and all subsequent verifications. Another hashing algorithm MAY supersede
+              this appointment in future protocol amendments.
+            </li>
+            <li>
+              Persistent sessions SHOULD only be used on stable networks where nodes are not frequently entering or exiting the network. Relying
+              on the 'ExpirationMin' time for the session to expire without valid ND messages is almost always a better option because it is
+              forgiving of potential node forgetfulness.
+            </li>
+          </ul>
+          <t>
+            NDP Sessions are visualized in the following figure:
+          </t>
+          <figure anchor="session-demo">
+            <name>Neighbor Discovery Sessions</name>
+            <artwork type="ascii-art" name="ndpSessions.txt">
+              <![CDATA[
+              ]]>
+            </artwork>
+          </figure>
+
+          <section anchor="addenda-session-initiators">
+            <name>Session Initiation</name>
+            <t>
+            </t>
+          </section>
+
+          <section anchor="addenda-session-recipients">
+            <name>Receiving New Sessions</name>
+            <t>
+            </t>
+          </section>
+
+          <!-- <t>
+            Any node may be the Sender or Receiver in 
+          </t>
+
+          <section anchor="addenda-session-senders">
+            <name>Processing Rules for Senders</name>
+            <t>
+              When desiring to initiate a new session, senders MUST set the 'N' bit to 1 to indicate a new Session. Any other time Session
+              options are used in ND exchanges, the 'N' bit MUST be set to 0.
+            </t>
+          </section>
+
+          <section anchor="addenda-session-receivers">
+            <name>Processing Rules for Receivers</name>
+            <t>
+              'Receivers' are technically Target Nodes in NDP exchanges.
+            </t>
+            <t>
+              Receivers who do not have a Session established with a requesting neighbor MUST NOT include Session options in return traffic.
+              Receivers MUST NOT 
+            </t>
+          </section> -->
+        </section>
+      </section>
     </section>
 
     <section anchor="behavioral">
@@ -1298,29 +1503,6 @@ Formulas:
         This section describes the requirements and implications of VBAs with regard to ordinary NDP. Simple
         amendments to NDP are necessary to secure the Address Resolution process.
       </t>
-
-      <section anchor="behavioral-send">
-        <name>Changes Adopted from SEND</name>
-        <t>
-          A few changes in NDP are adopted from the SEND specification <xref target="RFC3971"/> and applied to
-          integrate with VBA functionality. This is done for both compatibility and protocol robustness.
-        </t>
-
-        <section anchor="behavioral-send-nonce">
-          <name>Nonce Option</name>
-          <t>
-            <!-- TODO -->
-          </t>
-        </section>
-
-        <section anchor="behavioral-send-levels">
-          <!-- See Section 8 of RFC 3971. -->
-          <name>Secured &amp; Unsecured Distinctions</name>
-          <t>
-            Section x of the SEND RFC <xref target="RFC3971"/> defines a
-          </t>
-        </section>
-      </section>
 
       <section anchor="behavioral-cache">
         <name>Protecting the Neighbor Cache</name>
@@ -1368,6 +1550,14 @@ Formulas:
             from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
             which no response is necessary does not merit an explicit requirement that the sending neighbor
             be verified.
+          </t>
+        </section>
+
+        <section anchor="behavioral-send-levels">
+          <!-- See Section 8 of RFC 3971. -->
+          <name>Secured &amp; Unsecured Distinctions</name>
+          <t>
+            Section x of the SEND RFC <xref target="RFC3971"/> defines a
           </t>
         </section>
       </section>
@@ -1613,9 +1803,6 @@ COMPUTE & CACHE:
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
   |                            Reserved                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                                                               |
-  |                        64-bit Timestamp                       |
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   >                      Link Voucher Contents                    <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
               ]]>
@@ -1626,7 +1813,6 @@ COMPUTE & CACHE:
             <dt>Length</dt><dd>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.</dd>
             <dt>Reserved</dt>
             <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
-            <dt>Timestamp</dt><dd><!-- TODO --></dd>
             <dt>Link Voucher Contents</dt>
             <dd>
               The entirety of the NDP Link Voucher option to be attached to Router Advertisements or Redirects. This also MUST include
@@ -2066,19 +2252,20 @@ COMPUTE & CACHE:
     <section anchor="IANA">
       <name>IANA Considerations</name>
       <t>
-        This document defines two new Neighbor Discovery Protocol option types and one new link-local multicast
+        This document defines three new Neighbor Discovery Protocol option types and one new link-local multicast
         address. One of the NDP option types contains another set of Type-Length-Value (TLV) packet options.
         The multicast address also uses other assigned TLV packets to convey important (but optional) protocol
         information.
       </t>
       <t>
-        Two new Neighbor Discovery Protocol options are defined in this document and must have new Option Type
+        Three new Neighbor Discovery Protocol options are defined in this document and must have new Option Type
         values assigned in the "IPv6 Neighbor Discovery Option Formats" subregistry of the "Internet Control
         Message Protocol version 6 (ICMPv6) Parameters" registry.
       </t>
       <ul>
         <li>The Link Voucher option, described in <xref target="addenda-voucher"/>.</li>
         <li>The Voucher Summary option, described in <xref target="addenda-summary"/>.</li>
+        <li>The Session option, described in <xref target="addenda-session"/>.</li>
       </ul>
       <t>
         The Link Voucher option includes a new option type used to convey KDF algorithm selections.
