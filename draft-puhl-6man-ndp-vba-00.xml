@@ -21,7 +21,7 @@
 
 <rfc
   xmlns:xi="http://www.w3.org/2001/XInclude"
-  category="std"
+  category="exp"
   docName="draft-puhl-6man-ndp-vba-00"
   ipr="trust200902"
   obsoletes=""
@@ -429,32 +429,28 @@
             <t>
               When a node goes offline, there is no consequence for a malicious node spoofing its link-layer identifier. This
               is a problem for this specification and for any other address ownership methodology relying on link-layer address
-              bindings. It is indeed where more convoluted solutions relying on Public-Key infrastructure, like Cryptographically
+              bindings. It is indeed where more convoluted solutions relying on asymmetric cryptography, like Cryptographically
               Generated Addresses <xref target="RFC3972"/>, tend to thrive by certifying addresses NOT coupled to any link-layer
               attributes.
             </t>
             <t>
               VBA address ownership mechanisms are designed primarily to prevent active, TRANSPARENT spoofing; that is,
               to stop the interception of traffic between two online links without disrupting traffic between either party.
-              As mentioned previously, VBAs do NOT certify link-layer address bindings, and they rely solely on the
+              As mentioned previously, VBAs do NOT certify link-layer address bindings, and they are based on the
               principle that two link-layer devices CANNOT share the same identifier at the same time. Certifying addresses
               or using other monitoring technologies to detect when nodes are 'killed'/spoofed at the link layer are topics
               beyond the scope of this specification.
             </t>
             <t>
-              Most important to mitigate are on-path attacks between hosts and the default gateway of a network. 'Killing' the
-              default router for long enough to maintain an active spoof of its link-layer address is somewhat impractical unless
-              the malicious host has another means to gateway the intercepted packets to the wider internet. For example, a public
-              coffee shop network may only have one subnet router; attackers disabling the router and receiving forwarded packets
-              would need to route those packets to another connected network that has internet access.
-            </t>
-            <t>
               A point of emphasis about VBAs in this regard is their ability to control NDP traffic redirection attacks, without
               relying on a trust model that uses MAC address filtering or something similar. VBAs assume the network is always open
-              to any link-layer address and aims to prevent the openness of the link-layer from being abused to spoof Neighbor
-              Cache entries. Networks employing MAC address allow-lists, for example, probably have no need for VBAs at all.
-              Conversely, networks employing Network Access Controls (<!-- https://ieeexplore.ieee.org/document/9018454/figures#figures -->) might find a
-              significant benefit in using VBAs to secure the link layer and subsequently the network layer.
+              to any link-layer address, and they aim to prevent the openness of the link-layer from being abused to spoof Neighbor
+              Cache entries and to redirect Address Resolutions.
+            </t>
+            <t>
+              To enforce long-term ownership in the face of this link-layer impersonation problem, Neighbor Discovery Sessions
+              <!-- ref --> can be implemented as a complement to VBAs. See <xref target="security-sessions"/> for a deeper
+              exploration of ND Sessions as applied to Voucher-Based Addressing.
             </t>
           </section>
         </section>
@@ -1299,29 +1295,6 @@ Formulas:
         amendments to NDP are necessary to secure the Address Resolution process.
       </t>
 
-      <section anchor="behavioral-send">
-        <name>Changes Adopted from SEND</name>
-        <t>
-          A few changes in NDP are adopted from the SEND specification <xref target="RFC3971"/> and applied to
-          integrate with VBA functionality. This is done for both compatibility and protocol robustness.
-        </t>
-
-        <section anchor="behavioral-send-nonce">
-          <name>Nonce Option</name>
-          <t>
-            <!-- TODO -->
-          </t>
-        </section>
-
-        <section anchor="behavioral-send-levels">
-          <!-- See Section 8 of RFC 3971. -->
-          <name>Secured &amp; Unsecured Distinctions</name>
-          <t>
-            Section x of the SEND RFC <xref target="RFC3971"/> defines a
-          </t>
-        </section>
-      </section>
-
       <section anchor="behavioral-cache">
         <name>Protecting the Neighbor Cache</name>
         <t>
@@ -1370,6 +1343,14 @@ Formulas:
             be verified.
           </t>
         </section>
+      </section>
+
+      <section anchor="behavioral-send-levels">
+        <!-- See Section 8 of RFC 3971. -->
+        <name>Secured &amp; Unsecured Distinctions</name>
+        <t>
+          Section x of the SEND RFC <xref target="RFC3971"/> defines a
+        </t>
       </section>
 
       <section anchor="behavioral-dad">
@@ -1613,9 +1594,6 @@ COMPUTE & CACHE:
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
   |                            Reserved                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                                                               |
-  |                        64-bit Timestamp                       |
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   >                      Link Voucher Contents                    <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
               ]]>
@@ -1626,7 +1604,6 @@ COMPUTE & CACHE:
             <dt>Length</dt><dd>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.</dd>
             <dt>Reserved</dt>
             <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
-            <dt>Timestamp</dt><dd><!-- TODO --></dd>
             <dt>Link Voucher Contents</dt>
             <dd>
               The entirety of the NDP Link Voucher option to be attached to Router Advertisements or Redirects. This also MUST include
@@ -1996,6 +1973,12 @@ COMPUTE & CACHE:
           parameters in the Link Voucher SHOULD always tend toward being more forgiving for low-power or
           embedded systems. The balance of low compute latencies with high security might be difficult to
           determine, but implementations SHOULD attmept to discover and apply defaults that achieve this goal.
+        </t>
+      </section>
+
+      <section anchor="security-sessions">
+        <name>Integrating Neighbor Discovery Sessions</name>
+        <t>
         </t>
       </section>
 
