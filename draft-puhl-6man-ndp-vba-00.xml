@@ -2053,6 +2053,13 @@ COMPUTE & CACHE:
         </t>
       </section>
 
+      <section anchor="security-proxies">
+        <!-- See RFCs 4389 & 5909 -->
+        <name>Neighbor Discovery Proxies</name>
+        <t>
+        </t>
+      </section>
+
       <section anchor="security-usurp">
         <name>Hijacking or Desynchronizing Link Vouchers</name>
         <!-- Discuss de-sync in LV state as well: nodes in certain IEMs will NOT be able to communicate -->
