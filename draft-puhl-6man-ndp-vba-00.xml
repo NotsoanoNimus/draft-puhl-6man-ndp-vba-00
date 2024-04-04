@@ -2123,19 +2123,24 @@ COMPUTE & CACHE:
         <section anchor="security-dos-na-floods">
           <name>Neighbor Advertisement Flooding</name>
           <t>
-            A flood of unicast Neighbor Advertisement messages including Source Link-Layer Address options could inundate a
-            target with requests to validate supposed VBAs. Even if all of the provided addresses are bogus, the recipient node
-            must necessarily try to validate and cache the bindings. This could easily sap a target of all its computing resources,
-            particularly if the bogus IP addresses use very high iterations counts.
+            Neighbor Advertisement floods, either with (1) randomized addresses and Target Link Layer Address options or (2) 
+            randomized Target Link-Layer Address options for a known address, will NOT affect VBAs and the address verification
+            process for enforcing interfaces. This is because VBA NC behavior dictates that all unsolicited NAs be ignored, outside
+            of optional support for Gratuitious ND <xref target="RFC9131"/>. NA flooding is therefore not a topic of concern.
           </t>
         </section>
 
         <section anchor="security-dos-syn-floods">
           <name>Spoofed, High-Iteration Connection Flooding</name>
           <t>
-            Connecting from a buynch of fake LLADDRs over TCP. TCP requires responses so ND Add Res process kicks off
+            A malicious node may initiate a series of sessions from bogus IP addresses that demand return traffic at higher layers
+            of the network stack, such as TCP SYN floods. This would necessitate that the attack target perform a reverse Address
+            Resolution to determine the link-layer address of the supposed initiating IP.
           </t>
+          <!-- TODO: moar -->
         </section>
+
+        <!-- TODO: Add more sections. -->
       </section>
 
       <section anchor="security-fairness">
