@@ -1316,14 +1316,14 @@ Formulas:
           are aimed at a balanced mixture of optimization and security.
         </t>
 
-        <section anchor="behavioral-cache-receiving">
+        <section anchor="behavioral-cache-rxns">
           <name>Receiving Neighbor Solicitations</name>
           <!-- DO NOT EAGERLY CACHE WITHOUT VERIFYING. -->
           <t>
           </t>
         </section>
 
-        <section anchor="behavioral-cache-receiving">
+        <section anchor="behavioral-cache-unsolicitedna">
           <name>Unsolicited Neighbor Advertisements</name>
           <!-- Section 7.2.5 of RFC4861. -->
           <t>
@@ -1350,7 +1350,6 @@ Formulas:
             bindings have not changed for the sender's cache entry.
           </t>
           <t>
-            As stated in this document's introduction (<xref target="intro"/>),
             VBA employment primarily supplies privacy-focused address generation and uses neighbor address
             verification to provide proof of address ownership. The goal is to prevent on-path attackers
             from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
@@ -1939,6 +1938,7 @@ COMPUTE & CACHE:
           This will permit some degree of communication for unsupporting nodes, both on the local link and off-link,
           wherever IPv4 traffic is allowed.
         </t>
+      </section>
 
       <section anchor="transitions-iem">
         <name>Tweaking Interface Enforcement Modes</name>
@@ -2429,6 +2429,8 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5758.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6555.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3279.xml"/>
         <reference anchor="ITU.X690.2002" target="https://www.itu.int/rec/T-REC-X.690">
           <front>
             <title>Information Technology - ASN.1 encoding rules: Specification of Basic Encoding Rules (BER),
