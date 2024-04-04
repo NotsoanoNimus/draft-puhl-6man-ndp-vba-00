@@ -58,10 +58,10 @@
       <t>
         This document specifies an extensible IPv6 unicast address generation and verification methodology for local
         networks. Individual link-layer identifiers are bound to sets of deterministic output addresses, which
-        maintain user privacy regardless of link-layer identifier stability. Vouchers distributed by Router
-        Advertisements on-link are used to form a consensus between neighbors of the parameters used in the address
-        derivation process. Cryptographic key derivation functions are used to generate pseudo-random addresses and
-        to stretch address computation times. Host parameters can be used to derive any number of both stable
+        maintain user privacy regardless of link-layer identifier stability. Link Vouchers distributed by Router
+        Advertisements form a shared consensus between neighbors of the parameters used in the SLAAC address
+        generation process. Cryptographic key derivation functions are used to generate pseudo-random addresses and
+        to intentionally stretch address computation times. Host parameters can be used to derive any number of both stable
         and ephemeral, privacy-focused addresses for each on-link prefix and at the link-local scope. NDP
         exchanges can then verify the link-layer-address-to-IP bindings to prevent on-path attacks in local
         networks.
@@ -73,38 +73,24 @@
   <middle>
     <section anchor="intro">
       <name>Introduction</name>
-      <!--
-        RFC 8018:
-            Another approach to password-based cryptography is to construct key
-            derivation techniques that are relatively expensive, thereby
-            increasing the cost of exhaustive search.  One way to do this is to
-            include an iteration count in the key derivation technique,
-            indicating how many times to iterate some underlying function by
-            which keys are derived.  A modest number of iterations (say, 1000) is
-            not likely to be a burden for legitimate parties when computing a
-            key, but will be a significant burden for opponents.
-      -->
+      <!-- TODO -->
       <t>
-        Voucher-Based Addressing (VBA) offers an alternative solution to
-        the address ownership problem, enables extensible and private unicast address generation, and prevents
-        on-path attacks in IPv6 local networks. Using a mutual key derivation function to map input components
-        one-to-one to output ciphertexts, link-layer identifiers can be reliably coupled to sets
-        of deterministically generated IPv6 addresses and subsequently verified by neighboring nodes. All verifications
-        are decentralized and do not require public-key cryptography; only shared consensus on a distributed,
-        pseudo-random value used to seed the address generation procedure. The same deterministic algorithm produces
-        IPv6 address suffixes appearing statistically random to devices outside the local broadcast domain, who
-        are by design unaware of all input parameters associated with the address.
-      </t>
-      <!-- <t>
-        This document represents an application of cryptographic key-stretching methodologies to IPv6 address
-        generation. The result is a secure, high-impact, low-complexity change bundled with various transition
-        capabilities, effectively corroborating IPv6 address ownership to defeat malicious network address spoofing.
-      </t> -->
-      <t>
-        This document introduces Voucher-Based Addressing (VBA) in IPv6 networks as an optional functionality for Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/>.
+        Voucher-Based Addressing offers an alternative solution to the address ownership problem,
+        enables extensible and private unicast address generation, and prevents on-path attacks in IPv6 local networks.
+        Using a mutual key derivation function to map public input components to deterministic outputs, link-layer
+        identifiers are reliably coupled to sets of IPv6 addresses and subsequently verified by neighboring nodes. All
+        verifications are decentralized and do not require public-key cryptography; only shared consensus on a distributed,
+        pseudo-random value used to seed the address generation procedure. Despite its determinism, this generation and
+        verification process creates IPv6 addresses appearing statistically random to off-link devices, who are by design
+        unaware of all input parameters associated with the address.
       </t>
       <t>
-        VBAs operate on the principle that active spoofing requires the impersonation <!-- TODO -->
+        This document thus represents a cross-application of cryptographic
+        key-stretching techniques to link-layer address bindings in generating random IPv6 network addresses. The result
+        is a secure, high-impact, low-complexity, optional complement to the Neighbor Discovery Address Resolution process,
+        with very minimal changes to Neighbor Discovery options, formats, or behaviors. It is a proposed alternative to
+        SEND <xref target="RFC3971"/>, CGAs <xref target="RFC3972"/>, and Semantically Opaque Interface Identifiers
+        <xref target="RFC7217"/> in traditional LANs using "reactive" NDP, and it does not intend to obsolete any other document.
       </t>
       
       <section anchor="intro-requirements">
@@ -176,23 +162,23 @@
     <section anchor="summary">
       <name>Voucher-Based Addressing</name>
       <t>
-        This section outlines the design goals of Voucher-Based Addressing. It discusses requirements for network
-        interfaces related to VBAs. It also includes concrete processes and procedures used by VBA-enabled network
-        nodes to verify address ownership and to simultaneously create private, pseudo-random network addresses.
+        This section outlines the design goals of Voucher-Based Addressing. It reviews the primary mechanisms driving
+        the specification and their design considerations. It discusses related requirements for network interfaces
+        on-link. Lastly, it includes concrete processes and procedures used by VBA-enabled network nodes to verify
+        address ownership and to simultaneously create private, pseudo-random network addresses.
       </t>
 
       <section anchor="summary-overview">
         <name>Protocol Design</name>
         <t>
           A Voucher-Based Address is defined as any IPv6 unicast address derived from on-link voucher information.
-          The address derivation process is driven by a static, well-known procedure parameterized by a mixture of
-          voucher details and public node information. This same derivation process is used by other on-link nodes
-          to independently verify the link-layer binding of the address during the Neighbor Discovery Address
-          Resolution process.
+          The address derivation process is underpinned by a static, well-known procedure parameterized by a mixture
+          of Link Voucher details and public node information. This same derivation process is used by other on-link
+          nodes to independently verify the link-layer binding of the address during the ND Address Resolution process.
         </t>
         <t>
-          This section will outline fundamental design goals that aspire to synergistically balance privacy and
-          local security. It will also discuss the mechanisms by which Voucher-Based Addressing realizes these
+          This section will outline fundamental design goals aspiring to synergistically balance privacy and local
+          network security. It will also discuss the mechanisms by which Voucher-Based Addressing realizes these
           goals.
         </t>
 
@@ -482,21 +468,21 @@
             case all other automatic IEM state transitions MUST NOT apply.
           </t>
           <dl newline="true">
-            <dt>AAD - Address Awareness Disabled</dt>
+            <dt><tt>AAD - Address Awareness Disabled</tt></dt>
             <dd>The VBA-aware interface MUST NOT generate or verify any addresses, regardless of the incoming
               packets. It MUST NOT participate in any LOVMA traffic exchanges. In this mode, VBAs are ignored.
               This mode SHALL always be used by VBA-enabled interfaces on links without an established LV.</dd>
 
-            <dt>AGO - Address Generation Only</dt>
+            <dt><tt>AGO - Address Generation Only</tt></dt>
             <dd>The address generation procedure is followed for unicast addresses. The NDP Address Resolution
               process MUST NOT be supplemented by VBA optimization or verification procedures.</dd>
 
-            <dt>AGV - Address Generation &amp; Verification</dt>
+            <dt><tt>AGV - Address Generation &amp; Verification</tt></dt>
             <dd>The address generation and verification procedures are followed as per this document. Address
               Resolution is REQUIRED to fail if the advertised target link-layer address cannot be successfully
               bound to the target IP address. This SHOULD be the default Enforcement Mode for interfaces.</dd>
 
-            <dt>AGVL - Address Generation &amp; Verification with Levels</dt>
+            <dt><tt>AGVL - Address Generation &amp; Verification with Levels</tt></dt>
             <dd>Both address generation and verification procedures are employed, but verification failures MUST
               NOT be strictly enforced during NDP Address Resolution. Neighbors whose VBA(s) successfully verify
               MUST be marked or indicated locally as "Secured". A neighbor which fails to verify
@@ -567,6 +553,39 @@
             are immediately valid. They are also strongly RECOMMENDED to begin address generation in anticipation
             of the upcoming LV becoming active.
           </t>
+          <figure>
+            <name>Link Voucher Transitions</name>
+            <artwork type="ascii-art" name="voucherTransitions.txt">
+              <![CDATA[
+  ==========================================> Time
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+  ...   LV_A Validity        |
+  ~~~|~~~~~|~~~~~X~~~~~~~~~~~Z
+     |     |     +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     |     |     |      LV_B Validity       ...
+     |     |     +~~~~~|~~~~~|~~~~~|~~~~~|~~~~~~~
+  |==|=====|=====|=====|=====|=====|=====|===> Time
+  |  O     O     O     O     O     O     O    ...
+  |              |           |
+  [ LV_A Active  [ Window    [ LV_B Active
+ (1)            (2)         (3)
+
+** 'X' marks the final advertisement for LV_A.
+    Each 'O' at 'X' until and including 'Z' will
+    include a VHA from the VB of LV_A.
+** 'Z' marks the time at [X + LV_A.Expiration].
+** 'O' indicates the advertisement of a LV on-link.
+
+  Moments:
+    1   = Link Voucher A is active for all nodes.
+    2   = VHA. LOVMA-subscribed nodes become aware
+           of a transition window. Both LV_A and
+           LV_B are considered active LVs.
+    3   = LV_A expires. Link Voucher B is active for
+           neighbors and the transition completes.
+              ]]>
+            </artwork>
+          </figure>
           <t>
             If another VHA appears indicating a third LV as appointed for election, receivers MUST ignore the VHA
             until one of the two LVs from the original VHA has expired. This prevents VHA abuse which flags several
@@ -605,46 +624,13 @@
             transmitting updated LVs, all VBA-enabled nodes MUST retain the most recent valid LV for the purposes of
             address generation and verification.
           </t>
-          <figure>
-            <name>Link Voucher Transitions</name>
-            <artwork type="ascii-art" name="voucherTransitions.txt">
-              <![CDATA[
-  ==========================================> Time
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-  ...   LV_A Validity        |
-  ~~~|~~~~~|~~~~~X~~~~~~~~~~~Z
-     |     |     +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     |     |     |      LV_B Validity       ...
-     |     |     +~~~~~|~~~~~|~~~~~|~~~~~|~~~~~~~
-  |==|=====|=====|=====|=====|=====|=====|===> Time
-  |  O     O     O     O     O     O     O    ...
-  |              |           |
-  { LV_A Active  { Window    { LV_B Active
- (1)            (2)         (3)
-
-** 'X' marks the final advertisement for LV_A.
-    Each 'O' at 'X' until and including 'Z' will
-    include a VHA from the VB of LV_A.
-** 'Z' marks the time at [X + LV_A.Expiration].
-** 'O' indicates the advertisement of a LV on-link.
-
-  Moments:
-    1   = Link Voucher A is active for all nodes.
-    2   = VHA. LOVMA-subscribed nodes become aware
-           of a transition window. Both LV_A and
-           LV_B are considered active LVs.
-    3   = LV_A expires. Link Voucher B is active for
-           neighbors and the transition completes.
-              ]]>
-            </artwork>
-          </figure>
         </section>
       </section>
 
       <section anchor="summary-generate">
         <name>Address Generation</name>
         <t>
-          This section discusses the VBA generation procedure and the composition of VBAs.
+          This section discusses the generation procedure and composition of VBAs.
         </t>
         <figure>
           <name>The Voucher-Based Address Generation Procedure</name>
@@ -817,16 +803,16 @@ Formulas:
           opposite purposes for each function.
         </t>
         <dl newline="true">
-          <dt>Z(L, LV) = ~(L ^ LV.seed[0..1])</dt>
+          <dt><tt>Z(L, LV) = ~(L ^ LV.seed[0..1])</tt></dt>
           <dd>Returns a hextet to insert into a generated address. A bitwise complement of the result of an iterations
             count XOR'd with the first hextet of a Link Voucher seed value.</dd>
-          <dt>Z'(B, LV) = ~(B[8..9] ^ LV.seed[0..1])</dt>
+          <dt><tt>Z'(B, LV) = ~(B[8..9] ^ LV.seed[0..1])</tt></dt>
           <dd>Returns an iterations count derived from a full IPv6 address. In this case, 'B[8..9]' is equal to
             the length and position of the embedded hextet calculated by the function 'Z' above.</dd>
         </dl>
         <t>
-          Z' is necessarily computed for each VBA verification because the 'L' value is a required component to
-          reconstruct the solicited address of the Target Node.
+          <tt>Z'</tt> is necessarily computed for each VBA verification because the 'L' value is a required component
+          to reconstruct the solicited address of the Target Node.
         </t>
         <t>
           See <xref target="appendix-code-verification"/> for sample code in the C programming language which
@@ -869,8 +855,10 @@ Formulas:
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   >                       TLV Algorithm Type                      <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  >                      DER-encoded Public Key                   <
-  >                            & Signature                        <
+  |                                                               |
+  >                          DER-encoded                          <
+  >                     PublicKey & Signature                     <
+  |                                                               |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   >                            Padding                            <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -889,34 +877,52 @@ Formulas:
           <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
           <dt>Timestamp</dt>
           <dd>
-            <!-- TODO -->
+            A 64-bit value representing the system time of the sender at the moment an LV is constructed.
           </dd>
           <dt>VoucherID</dt>
           <dd>
-            A pseudo-random 64-bit value that uniquely identifies the Link Voucher. This MUST NOT change between distributions of
-            same LV.
+            A pseudo-random 64-bit value that uniquely identifies a Link Voucher instance. This MUST NOT change between distributions
+            of the same unique LV.
           </dd>
           <dt>Seed</dt>
           <dd>
-            A 128-bit pseudo-random value used as an input for on-link node VBA generation. This MUST NOT be the same across
-            different VoucherID values.
+            A 128-bit pseudo-random value used as an input for neighbor VBA generation. This value MUST be the same for each
+            distribution of an LV identified by a VoucherID. It MUST NOT be the same value across different VoucherID values.
           </dd>
           <dt>Algorithm Type</dt>
           <dd>
             Specifies exactly which type of key derivation function to use in address generation and its corresponding difficulty.
             See <xref target="addenda-voucher-kdfs"/> for more details.
           </dd>
-          <dt>Public Key</dt>
+          <dt>PublicKey (named field; NOT present in option data)</dt>
           <dd>
-            <!-- TODO -->
+            This value MUST NOT be directly present in LV options. Extended ECDSA signatures have a public key recovery feature which
+            allows the PublicKey value to be implied within the encoded signature value <!-- ref -->.
+            Receivers are REQUIRED to extract the PublicKey value each time they validate an LV signature, to ensure it has not changed.
+            This implied public key value used to sign LVs MUST NOT change in distributions of the same LV identified by the VoucherID value.
           </dd>
-          <dt>Cryptographic Signature</dt>
+          <dt>ECDSA Signature</dt>
           <dd>
-            <!-- TODO -->
+            <t>
+              A variable-length field containing a DER-encoded ECDSA signature, derived using the Private Key corresponding to
+              the sender's LV public key. The signature is computed over a series of sequential octets, constructed in the following order:
+            </t>
+            <ol spacing="compact">
+              <li>The 16-bit 'Expiration' value.</li>
+              <li>The 64-bit 'Timestamp' value.</li>
+              <li>The 32-bit 'VoucherID' value.</li>
+              <li>The 128-bit 'Seed' value.</li>
+              <li>The variable-length contents of the 'Algorithm Type' value, including its Type and Length values.</li>
+            </ol>
+            <t>
+              The algorithm used in signature computation is ecdsa-with-SHA256, as defined in Section 3.2 of <xref target="RFC5758"/>.
+              This field MUST be a DER-encoded <xref target="ITU.X690.2002"/> ASN.1 structure of the type ECDSA-Sig-Value
+              (Section 2.2.3 of <xref target="RFC3279"/>).
+            </t>
           </dd>
           <dt>Padding</dt>
           <dd>
-            Any extra padding set on the datagram to round its total length to an even 4-octet boundary. Senders MUST initialize this
+            Any extra padding set on the datagram to round its total length to an even 8-octet boundary. Senders MUST initialize this
             value to 0. Receivers MUST ignore this field.
           </dd>
         </dl>
@@ -933,7 +939,7 @@ Formulas:
           </t>
           <ol spacing="compact">
             <li>Send a Router Soliciation to the All Routers multicast group at FF02::2.</li>
-            <li>Wait for an LV for at least 2 seconds before sending another Soliciation.</li>
+            <li>Wait for an LV option for at least 2 seconds before sending another Soliciation.</li>
             <li>
               <t>Repeat this process 2 more times.</t>
               <ul spacing="compact">
@@ -944,7 +950,7 @@ Formulas:
                   <ul spacing="compact">
                     <li>the Sender IS NOT a router: the Sender's LV may be distributed on the local link as an option attached
                       to an appropriate NDP Redirect packet.</li>
-                    <li>the Sender IS a router: the Sender may attach its LV to an appropriate NDP Router Advertisement packet.</li>
+                    <li>the Sender IS a router: the Sender may attach its LV to an appropriate ND Router Advertisement packet.</li>
                   </ul>
                 </li>
               </ul>
@@ -954,20 +960,21 @@ Formulas:
             Senders of Link Vouchers MUST maintain stateful information about their LVs, so reliable and consistent LVs
             can be sent as demanded. The rotation of stable LV information -- the ID, Seed value, or Algorithm details --
             MUST be signaled in advance using the LOVMA group <xref target="lovma-packets-vha"/> which will initiate a transition
-            window.
+            window to the new address generation parameters.
           </t>
           <t>
             Expiration values MUST be set to an appropriate value. Senders MAY adjust this value without requiring a handoff.
             Timestamp values MUST always be sent to the precise system time as a big-endian 64-bit value.
           </t>
           <t>
-            The Sender's LV MUST always be unique on-link and NEVER be forwarded or duplicated copies of other LVs. Similarly, the
-            Voucher Seed MUST NOT be preserved between LVs or handoffs. It MUST always be a random value.
+            The Sender's LV MUST always be unique on-link and NEVER be forwarded or duplicated copies of other LVs. Additionally,
+            the Voucher Seed MUST NOT be preserved between different LV VoucherIDs or handoffs. It MUST always be a random value
+            when first assigned to an LV VoucherID.
           </t>
           <t>
             Protecting the link from rogue LVs is crucial to securely maintain the full consensus of the local network.
             See <xref target="bearers-vigilance"/> on RA-Guard and <xref target="security-usurp"/> about LV Hijacking
-            for more details.
+            for more details. <xref target="security-pki"/> also discusses considerations for incorporating trust anchors and PKI.
           </t>
         </section>
 
@@ -977,7 +984,8 @@ Formulas:
             A Link Voucher option appearing with any packet except NDP Router Advertisements or NDP Redirects MUST be ignored.
           </t>
           <t>
-            Nodes manually set to Address Awareness Disabled mode on their receiving interface MUST ignore LVs.
+            Nodes manually set to Address Awareness Disabled mode on their receiving interface MUST ignore LVs. Similarly, nodes
+            with static LV details assigned on their interface(s) MUST ignore LVs.
           </t>
           <t>
             Nodes acting as authorized Voucher Bearers MUST disregard any received LV options on the links for which they are
@@ -990,14 +998,20 @@ Formulas:
             valid signature MUST be ignored.
           </t>
           <t>
+            Nodes receiving a new LV for the first time are "locked" to the LV and its public key. They MUST NOT accept LVs which
+            contain any other PublicKey details or signatures which do not use the same PublicKey. This period of "locking" remains
+            until the cached LV is expired or VB responsibility is delegated to another LV.
+          </t>
+          <t>
             Received LVs which contain different address generation parameters (VoucherID, Seed, Algorithm Type option details)
-            MUST be ignored and MUST NOT update any cached LV entries.
+            MUST be ignored and MUST NOT update any cached LV entries. Likewise, any difference in the PublicKey field MUST cause
+            the LV to be ignored.
           </t>
           <t>
             LVs with invalid timestamps MUST be ignored. Timestamps MUST be considered invalid if the value falls outside the
             range [CURRENT_TIMESTAMP - LV_Expiration] to [CURRENT_TIMESTAMP + LV_Expiration], where 'CURRENT_TIMESTAMP' is the
-            64-bit system time measured by the receiving node. This ensures timestamp validity remains flexible even with minor
-            clock drifting across the local network.
+            64-bit system time (in seconds) measured by the receiving node. This ensures timestamp validity remains flexible even
+            with minor clock drifting across the local network.
           </t>
           <t>
             Segment VBs may occasionally wish to hand off responsibility for the Link Voucher to another VB through gratuitous
@@ -1159,12 +1173,6 @@ Formulas:
             </dd>
           </dl>
         </section>
-
-        <section anchor="addenda-voucher-signatures">
-          <name>Voucher Signatures</name>
-          <t>
-          </t>
-        </section>
       </section>
 
       <section anchor="addenda-summary">
@@ -1315,6 +1323,13 @@ Formulas:
           </t>
         </section>
 
+        <section anchor="behavioral-cache-receiving">
+          <name>Unsolicited Neighbor Advertisements</name>
+          <!-- Section 7.2.5 of RFC4861. -->
+          <t>
+          </t>
+        </section>
+
         <section anchor="behavioral-nud">
           <name>Neighbor Unreachability Detection</name>
           <t>
@@ -1350,6 +1365,22 @@ Formulas:
         <name>Secured &amp; Unsecured Distinctions</name>
         <t>
           Section x of the SEND RFC <xref target="RFC3971"/> defines a
+        </t>
+      </section>
+
+      <section anchor="security-dos-grand">
+        <name>Gratuitous Neighbor Discovery</name>
+        <t>
+          Gratuitious ND <xref target="RFC9131"/> allows routers to create STALE Neighbor Cache entries from received
+          Neighbor Advertisements, as an optimization to expedite the exchange of link-layer address bindings. VBAs
+          SHOULD support this option, as routers preemptively verifying a host's address bindings will allow the host to
+          communicate off-link much faster than if the router required a reverse Address Resolution process for the host.
+        </t>
+        <t>
+          Implementations SHOULD be flexible with Gratuitious ND as it applies to IEMs requiring address verification. If
+          a flurry of NA packets is received in an ostensible attack, the router might quickly find itself with too much
+          work and could start dropping packets. Therefore, implementations MAY want to toggle this feature reactively and
+          dynamically.
         </t>
       </section>
 
@@ -1685,7 +1716,15 @@ COMPUTE & CACHE:
             </dd>
             <dt>Reserved</dt>
             <dd>Space reserved for future use. This value MUST be initialized to 0 by senders and MUST be ignored by receivers.</dd>
-            <dt>Timestamp</dt><dd>The current system time encoded as a 64-bit value. <!-- TODO --></dd>
+            <dt>Timestamp</dt>
+            <dd>
+              <t>The current precise system time encoded as a 64-bit value.</t>
+              <t>
+                Timestamps MUST be considered invalid if the value falls outside the range [CURRENT_TIMESTAMP - 120] to
+                [CURRENT_TIMESTAMP + 120], where 'CURRENT_TIMESTAMP' is the 64-bit system time (in seconds) measured by the receiving node.
+                This ensures timestamp validity remains flexible even with minor clock drifting across the local network.
+              </t>
+            </dd>
             <dt>Signer VoucherID</dt>
             <dd>
               The VoucherID of the active LV which is signing the handoff to the Upcoming VoucherID. Nodes using this ID for their active
@@ -1696,9 +1735,22 @@ COMPUTE & CACHE:
             <dd>
               The VoucherID of the upcoming LV which will be assuming 'active' status on the network after the transition window completes.
             </dd>
-            <dt>DER-encoded Signature</dt>
+            <dt>ECDSA Signature</dt>
             <dd>
-              <!-- TODO! -->
+              <t>
+                A variable-length field containing a DER-encoded ECDSA signature, derived using the Private Key corresponding to
+                the sender's Signer VoucherID. The signature is computed over a series of sequential octets, constructed in the following order:
+              </t>
+              <ol spacing="compact">
+                <li>The 64-bit 'Timestamp' value.</li>
+                <li>The 32-bit 'Signer VoucherID' value.</li>
+                <li>The 32-bit 'Upcoming VoucherID' value.</li>
+              </ol>
+              <t>
+                The algorithm used in signature computation is ecdsa-with-SHA256, as defined in Section 3.2 of <xref target="RFC5758"/>.
+                This field MUST be a DER-encoded <xref target="ITU.X690.2002"/> ASN.1 structure of the type ECDSA-Sig-Value
+                (Section 2.2.3 of <xref target="RFC3279"/>).
+              </t>
             </dd>
             <dt>Padding</dt>
             <dd>
@@ -1729,7 +1781,7 @@ COMPUTE & CACHE:
         <t>
           If the current VB is NOT a router or responsible for routing subnet traffic, then it MUST distribute the LV via
           an NDP Redirect packet with an LV option, instead of using an NDP RA packet with the LV option. The Redirect is
-          expected to behave similarly to the defined NDP process (<!-- NDP section ref -->).
+          expected to behave similarly to the defined NDP process (Section 8 of <xref target="RFC4861"/>).
         </t>
         <t>
           VBs MAY at any time let their own LVs expire if they do not wish to elect another VB, or if there are no other
@@ -1792,53 +1844,68 @@ COMPUTE & CACHE:
         This section briefly lists and references the various optimizations built into this specification.
       </t>
 
-      <dl newline="true">
-        <dt>Duplicate Address Detection &amp; Caching</dt>
-        <dd>
-          The SLAAC DAD process is optimized to reduce the burden of regenerating another VBA from scratch.
-          See <xref target="behavioral-dad"/> for how this optimization reduces the costs of DAD collisions.
-        </dd>
+      <section anchor="optimizations-summary">
+        <name>Summary</name>
+        <dl newline="true">
+          <dt><tt>Avoiding Repeat Verifications</tt></dt>
+          <dd>
+            Neighbor Discovery NUD features are used to avoid continuous verification of active neighbors between Link Voucher
+            instances. Neighbors do not need to be re-verified when there has been no change to their already-verified bindings
+            in a previous Address Resolution exchange. <xref target="behavioral-nud"/> provides more details about this crucial
+            performance optimization.
+          </dd>
 
-        <dt>The LOVMA Channel &amp; Preemption</dt>
-        <dd>
-          The LOVMA group affords various optimizations to the network. It enables the use of gratuitous handoffs for
-          VBA-enabled nodes to detect upcoming voucher changes (<xref target="lovma-packets-vha"/>). It allows hosts to
-          note their preferred iterations counts for upcoming address generations, new prefixes, and LV VB transitions
-          (<xref target="lovma-packets-vsr"/>). Lastly, it allows candidate nodes to become capable for VB election when
-          the current VB no longer wishes to maintain responsibility for the Link Voucher (<xref target="lovma-packets-vci"/>).
-        </dd>
+          <dt><tt>Duplicate Address Detection</tt></dt>
+          <dd>
+            The SLAAC DAD process <xref target="RFC4862"/> is optimized to reduce the burden of regenerating another VBA
+            from scratch. See <xref target="behavioral-dad"/> for how this optimization reduces the costs of DAD collisions.
+          </dd>
 
-        <dt>Key Derviation Function Selections</dt>
-        <dd>
-          The options presented in <xref target="addenda-voucher-kdfs"/> permits VBs the flexibility to choose a baseline
-          "difficulty" setting for address generation and verification in their distributed LVs. From this baseline, which
-          implementations MAY establish through either default settings or some other network benchmarking, network nodes
-          are permitted to scale the difficulties of each address they generate based on their chosen iterations counts.
-        </dd>
+          <dt><tt>The LOVMA Channel &amp; Preemption</tt></dt>
+          <dd>
+            The LOVMA group affords various optimizations to the network. It enables the use of gratuitous handoffs for
+            VBA-enabled nodes to detect upcoming voucher changes (<xref target="lovma-packets-vha"/>). It allows hosts to
+            note their preferred iterations counts for upcoming address generations, new prefixes, and LV VB transitions
+            (<xref target="lovma-packets-vsr"/>). Lastly, it allows candidate nodes to become capable for VB election when
+            the current VB no longer wishes to maintain responsibility for the Link Voucher (<xref target="lovma-packets-vci"/>).
+          </dd>
 
-        <dt>Voucher Summary Options</dt>
-        <dd>
-          VS options (<xref target="addenda-summary"/>) allow hosts to exchange identifying information about the LVs used
-          to construct or verify the target address related to the current NDP Address Resolution exchange. This saves
-          computation time if the two hosts disagree on the ID of the active (and possibly upcoming) Link Voucher. Behavior
-          with this option is of course based on the IEMs of the two communicating interfaces during this exchange.
-        </dd>
-      </dl>
+          <dt><tt>Key Derviation Function Selections</tt></dt>
+          <dd>
+            The options presented in <xref target="addenda-voucher-kdfs"/> permits VBs the flexibility to choose a baseline
+            "difficulty" setting for address generation and verification in their distributed LVs. From this baseline, which
+            implementations MAY establish through either default settings or some other network benchmarking, network nodes
+            are permitted to scale the difficulties of each address they generate based on their chosen iterations counts.
+          </dd>
+
+          <dt><tt>Voucher Summary Options</tt></dt>
+          <dd>
+            VS options (<xref target="addenda-summary"/>) allow hosts to exchange identifying information about the LVs used
+            to construct or verify the target address related to the current NDP Address Resolution exchange. This saves
+            computation time if the two hosts disagree on the ID of the active (and possibly upcoming) Link Voucher. Behavior
+            with this option is of course based on the IEMs of the two communicating interfaces during this exchange.
+          </dd>
+        </dl>
+      </section>
 
       <section anchor="optimizations-preemption">
         <name>A Note About Packet Loss &amp; Speed</name>
         <t>
-          This document proposes various optimizations to get Voucher-Based Addressing to 
+          This document proposes various optimizations to ensure the performance of VBAs is commensurate with the simplicity
+          of its integration into pre-established LANs. However, the cost of address verification can be notable depending on
+          the selected Algorithm Type options of a Link Voucher, in addition to the relative computing power of the verifying
+          node. Such a process might easily create a situation where addresses simply cannot be verified fast enough.
         </t>
         <t>
-          <xref target="RFC9131"/> proposes a more 'eager' NDP solution that gratuitously updates cache entries between nodes,
-          for example/ Such a preemptive solution carries significant advantages for network responsiveness, but also
-          significant disadvantages from a local security perspective: specifically in the case of denial-of-service attacks
-          flooding nodes with bogus gratuitous NAs that might consume absurd system resources.
+          As such, it is important to highlight that optimizations become inversely proportional to security. In other words,
+          preemptive caching of neighbor information -- from, e.g., Gratuitious Neighbor Discovery <xref target="RFC9131"/> --
+          results in fewer lost packets when enabled. But it also grants the ability for malicious attackers to spoof thousands
+          of gratuitous advertisements per second, inundating routers with a backlog of address bindings to verify (assuming
+          some IEM on the receiving interface mandates verification).
         </t>
         <t>
-          It is left to implementations to best balance these benefits and caveats. Further discussion can be found in
-          <xref target="security"/>.
+          It is left to both (1) other works and (2) per-implementation details to balance these issues. While this document
+          attempts to find a happy medium, it can only make generic suggestions due to its umbrella of affected technologies.
         </t>
       </section>
     </section>
@@ -1846,10 +1913,10 @@ COMPUTE & CACHE:
     <section anchor="transitions">
       <name>Transition Considerations</name>
       <t>
-        This document would be unrealistic to assume that VBAs could be deployed simultaneously across all hosts in
-        even relatively tiny local subnets. There will undoubtedly be network devices present which have no support
-        for VBAs; while especially true at the time of writing this document, it is certain that some hardware vendors
-        and software developers will never implement the protocol or provide necessary operable support.
+        This document would be unrealistic to assume that VBAs could be deployed simultaneously across all hosts in even
+        relatively tiny local subnets. There will undoubtedly be network devices present which have no support for VBAs.
+        While that is especially true at the time of writing this document, it is certain that -- like IPv6 itself -- some
+        hardware vendors and software developers will never implement the protocol or provide necessary operable support.
       </t>
       
       <section anchor="transitions-dualstack">
@@ -1913,13 +1980,6 @@ COMPUTE & CACHE:
         <t>
           The Appendix of this document contains a detailed statistical evaluation of address randomness;
           see <xref target="appendix-randomness"/>.
-        </t>
-      </section>
-
-      <section anchor="security-proxies">
-        <!-- See RFCs 4389 & 5909 -->
-        <name>Neighbor Discovery Proxies</name>
-        <t>
         </t>
       </section>
 
@@ -1997,8 +2057,49 @@ COMPUTE & CACHE:
 
       <section anchor="security-pki">
         <name>Certifying Link Vouchers</name>
-        <!-- refs to SEND and certification methods -->
         <t>
+          Link Vouchers are susceptible to impersonation despite the use of asymmetric cryptography in signing their
+          details. Once a host becomes aware of a valid public-key and signature, it becomes "locked" to this key and
+          will not accept LVs from senders NOT using it in their signatures (unless the current LV expires or a VHA is
+          issued). However, the initial exchange -- or first-contact -- between a VB and a neighbor is still vulnerable.
+          This is because any malicious node on-link could craft a public key for its own LV and advertise it, if the
+          node is not first blocked by infrastructure-based solutions like RA-Guard.
+        </t>
+        <t>
+          Section 6 of <xref target="RFC3971"/> dictates the use of Public Key Infrastructure to ensure communication
+          is genuine between hosts and routers, and that each router is authorized to provide router information. Trust
+          anchors are used to determine whether a certificate presented by a router validates its role in SEND: if the
+          router presents a certificate that is trusted by the anchor, then on-link hosts sharing the same trust anchor
+          must consider it as legitimate. The same validation of certification paths can also be used to verify RSA
+          Signature options between on-link hosts.
+        </t>
+        <t>
+          Establishing certification paths that validate SEND traffic is done through the use of two new ICMP messages:
+        </t>
+        <ul spacing="compact">
+          <li>Certification Path Solicitation (ICMP type 148). Solicits routers with a set of trust anchors and expects
+            an advertisement including certificates authorized by one or more of the trust anchors.</li>
+          <li>Certification Path Advertisement (ICMP type 149). Routers use these to respond to valid solicitations
+            indicating the need for one or more certificate(s) from a set of specified Trust Anchor options.</li>
+        </ul>
+        <t>
+          Future additions to this specification MAY invoke these ICMP options to integrate with public-key signatures
+          appearing on Link Vouchers. This might include amendments to the ND Link Voucher option which would extend the
+          field by some extra length to convey trust anchor or certification path information. Similar amendments might
+          just consider adding trust anchor or certification path information to LVs and letting each neighbor use their
+          own certificate stores to validate them.
+        </t>
+        <t>
+          While this proposal seeks to AVOID the complexities introduced by certificates and trust anchors, this same
+          supporting infrastructure might be crucial for first-contact trust assurance where RA-Guard or similar mechanisms
+          cannot be used to protect the link from malicious VBs. This is probably a much more performant use of certification
+          paths than SEND, simply because the trust of a public key only needs to be verified ONCE at each receiver when an
+          initial LV, or LV handoff, is received and stored.
+        </t>
+        <t>
+          Such an amendment to LV options is beyond the scope of this document. It is suggested as a possible future endeavor
+          that could make VBAs a more secure, isolated, and end-to-end solution, instead of a specification which relies on
+          first-come-first-serve trust.
         </t>
       </section>
 
@@ -2009,10 +2110,23 @@ COMPUTE & CACHE:
           employing VBAs. Solutions may or may not be provided along with each section.
         </t>
 
+        <section anchor="security-dos-ns-floods">
+          <name>Neighbor Solicitation Flooding</name>
+          <t>
+            Section 4.3.2 of <xref target="RFC3756"/> outlines an attack targeting last-hop routers that inundates the network
+            with traffic destined to on-link hosts that do not exist. VBAs do not suffer from this attack vector, as there is
+            no extra cost incurred in creating Neighbor Solicitation packets. Mitigations of this attack are therefore left to
+            other applied techniques proposed elsewhere.
+          </t>
+        </section>
+
         <section anchor="security-dos-na-floods">
           <name>Neighbor Advertisement Flooding</name>
           <t>
-            Responding to NS with a bunch of NAs 
+            A flood of unicast Neighbor Advertisement messages including Source Link-Layer Address options could inundate a
+            target with requests to validate supposed VBAs. Even if all of the provided addresses are bogus, the recipient node
+            must necessarily try to validate and cache the bindings. This could easily sap a target of all its computing resources,
+            particularly if the bogus IP addresses use very high iterations counts.
           </t>
         </section>
 
@@ -2020,13 +2134,6 @@ COMPUTE & CACHE:
           <name>Spoofed, High-Iteration Connection Flooding</name>
           <t>
             Connecting from a buynch of fake LLADDRs over TCP. TCP requires responses so ND Add Res process kicks off
-          </t>
-        </section>
-
-        <section anchor="security-dos-grand">
-          <name>Gratuitous Neighbor Discovery</name>
-          <!-- RFC 9131 considerations. -->
-          <t>
           </t>
         </section>
       </section>
@@ -2048,9 +2155,60 @@ COMPUTE & CACHE:
         </t>
       </section>
 
+      <section anchor="security-proxies">
+        <!-- See RFCs 4389 & 5909 -->
+        <name>Neighbor Discovery Proxies</name>
+        <t>
+        </t>
+      </section>
+
       <section anchor="security-sessions">
         <name>Integrating Neighbor Discovery Sessions</name>
         <t>
+          As noted in <xref target="summary-overview-adversaries-kill"/>, VBAs are vulnerable to Identity Assumption
+          attacks where an active link-layer-address-to-IP binding could be hijacked by malicious hosts. This is
+          accomplished by denying connectivity to the legitimate host owning a link-layer address, then assuming its
+          link-layer address in its absence. The malicious host can then intercept all frames destined for the original
+          node WITHOUT needing to perform a classic traffic redirection attack.
+        </t>
+        <t>
+          Networks using SEND can also experience Identity Assumption attacks, but only in the short-term because SEND
+          relies on CGAs <xref target="RFC3972"/> to enforce knowledge of a private cryptographic key in ND messages. SEND
+          itself declares this problem in Section 9.1 <xref target="RFC3971"/>.
+          When a new request for ND arrives -- such as during the NUD process -- impersonating nodes will not be able to sign
+          ND responses because they do not know the original private key. These concerns are more considerable for VBAs than
+          SEND for this very reason: VBAs do NOT require knowledge of some private value that is publicly verifiable.
+        </t>
+        <t>
+          ND Session options <!-- ref --> are used to exchange session details using Zero-Knowledge
+          Password Proof (ZKPP) techniques. These options do not interfere with the VBA verification process between two
+          nodes, and act to further bolster confidence in neighbor verification over a long-term session. ZKPP allows a
+          node to express knowledge of a particular password without exposing the password itself; this typically happens
+          through a clever hashing mechanism known as 'reverse hash chain revealing'.
+        </t>
+        <t>
+          An ND Session is a long-term exchange bound to one single instance of Address Resolution between a set of link-layer
+          addresses and IP addresses. Changing any of those four variables will necessitate a new Session be formed. A per-session,
+          random password is chosen on each session node, whose hash value is repeatedly iterated with a salt value consisting of
+          session variables and then given to the session peer. Nodes can prove knowledge of their initial passwords in each ND
+          message by slowly revealing each one-time-use 'ancestor' hash in the iteration chain, going back to the Root Hash. See
+          the specification <!-- ref --> for more information about its inner workings.
+        </t>
+        <t>
+          ZKPP-based sessions therefore provide strong protection against Identity Assumption attacks occurring in the middle
+          of a communication between two neighbors. They are still susceptible to impersonations at the very start of the ND
+          Session, but this would require a very opportunistic and reactive attacker, since Sessions can last up to days at a time
+          without any update. Implementing ND Session options with VBAs, then, simply shims the ND Address Resolution process with
+          Session options. Such implementations SHOULD always validate the underlying session BEFORE processing any VBA verifications.
+        </t>
+        <t>
+          To summarize, ND Sessions reassure two communicating neighbors of each others' persistent identities; on-path attackers
+          will not be able to provide ZKPP. Similarly, VBAs provide the link-layer-address-to-IP binding which enforces Address
+          Resolutions always return the correct link-layer addresses for target IPs.
+          ND Sessions MAY be integrated with VBAs, but are not a requirement and in practice will almost certainly add both
+          extra complication and extra latency to ND Address Resolution exchanges. These are again considered a trade-off
+          for allowing ND verifications to be end-to-end, instead of something requiring complex implementations or network
+          infrastructure to be deployed.
         </t>
       </section>
 
@@ -2071,7 +2229,7 @@ COMPUTE & CACHE:
               Use the AGVL IEM (<xref target="summary-interfaces-mode"/>) on either the whole subnet, or on interfaces
               known to interact with the target static address(es) directly. The AGVL IEM will permit per-implementation
               behaviors to strongly prefer Secured NDP resolutions over Unsecured ones. Note that this option will remove
-              any guarantees of address ownership or MITM prevention from the static address(es).
+              any guarantees of address ownership or on-path attack prevention from the static address(es).
             </t>
             <t>
               It is not necessary to set AGVL on the interfaces with static addresses (unless such interfaces also interact
@@ -2091,8 +2249,8 @@ COMPUTE & CACHE:
             <t>
               Therefore, a static entry in the Neighbor Cache of the router should correlate link-layer identifier(s) to the
               static IPv6 address(es) on each host. Doing this for each long-term static address will mitigate any potential
-              MITM attacks for both neighbors exchanging packets, while still ensuring all necessary NDP Address Resolutions
-              verify according to VBA rules.
+              on-path attacks for both neighbors exchanging packets, while still ensuring all other ND Address Resolutions
+              verify according to VBA rules and the level of strictness configured on each network interface.
             </t>
           </li>
           <li>
@@ -2139,8 +2297,8 @@ COMPUTE & CACHE:
         Message Protocol version 6 (ICMPv6) Parameters" registry.
       </t>
       <ul>
-        <li>The Link Voucher option, described in <xref target="addenda-voucher"/>.</li>
-        <li>The Voucher Summary option, described in <xref target="addenda-summary"/>.</li>
+        <li>The Link Voucher option (63), described in <xref target="addenda-voucher"/>.</li>
+        <li>The Voucher Summary option (64), described in <xref target="addenda-summary"/>.</li>
       </ul>
       <t>
         The Link Voucher option includes a new option type used to convey KDF algorithm selections.
@@ -2265,6 +2423,16 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5758.xml"/>
+        <reference anchor="ITU.X690.2002" target="https://www.itu.int/rec/T-REC-X.690">
+          <front>
+            <title>Information Technology - ASN.1 encoding rules: Specification of Basic Encoding Rules (BER),
+              Canonical Encoding Rules (CER), and Distinguished Encoding Rules (DER)</title>
+            <author>
+              <organization>International Telecommunications Union</organization>
+            </author>
+          </front>
+        </reference>
       </references>
       <!-- <references>
         <name>Informative References</name>
@@ -2387,12 +2555,11 @@ COMPUTE & CACHE:
     </section>
 
     <section anchor="acknowledgements" numbered="false">
-      <!-- [REPLACE/DELETE] an Acknowledgements section is optional -->
       <name>Acknowledgements</name>
       <t>
         The author would like to thank Dr. Jinhua Guo of the University of Michigan for his valuable,
-        constructive criticisms and support of this proposal during its formative stages.
+        constructive criticisms and support of this document.
       </t>
     </section>
- </back>
+  </back>
 </rfc>
