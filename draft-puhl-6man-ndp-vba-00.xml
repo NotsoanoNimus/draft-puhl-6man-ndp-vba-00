@@ -1717,38 +1717,6 @@ COMPUTE & CACHE:
         section introduces any VB constraints, recommendations, or other procedures for VBA implementations and deployments.
       </t>
 
-      <section anchor="bearers-vigilance">
-        <name>Employing RA-Guard</name>
-        <t>
-          RA-Guard, short for Router Advertisement Guarding, is specified in <xref target="RFC6105"/> as a response to
-          the Rogue RA Problem Statement in <xref target="RFC6104"/>. Networks need to protect against basic Rogue RAs
-          in order to keep routing trusted and secured without high-complexity changes to the infrastructure. <!-- TODO -->
-        </t>
-        <!-- TODO: what is it and why; brief paragraph -->
-        <t>
-          The RA-Guard system SHOULD be augmented and deployed with VBA-aware functions, capable of tracking the state
-          of Link Vouchers and elections on the LOVMA channel. This will allow an intermediate network device, such as
-          a switch, to only require RA-Guard Learning mode for a short initial period and then to subsequently "follow"
-          the correct LV around, similar to what other network nodes do.
-        </t>
-        <t>
-          The difference with RA-Guard in this scenario is to of course enable and disable RA/Redirect packet forwarding
-          when and where appropriate based on what the system understands about the state of vouchers on the network. One
-          notable exception to this, however, is that a RA-Guard implementation MAY drop its protections if and only if
-          the most recent and legitimate LV has expired without a successor VB. This is because some responsible VB needs
-          to be able to supersede a "dead" LV.
-        </t>
-        <t>
-          In the case where the elected VB is NOT a link router nor responsible for routing traffic, and NDP Redirect
-          packets are being used with the LV option, RA-Guard is strongly RECOMMENDED to also include these in its
-          learning processes.
-        </t>
-        <t>
-          The exact deployment of RA-Guard is beyond the scope of this document, but it is STRONGLY RECOMMENDED in
-          order to ensure VBAs faithfully serve their purpose during the NDP Address Resolution process.
-        </t>
-      </section>
-
       <section anchor="bearers-appointment">
         <name>Appointments</name>
         <t>
@@ -1768,6 +1736,52 @@ COMPUTE & CACHE:
           candidates available on the LOVMA channel. VBs SHOULD NOT let their own LVs expire without first appointing a
           responsible successor node. If there is no successor, the most recent LV MUST remain current in the network until
           another node assumes VB responsibility.
+        </t>
+      </section>
+
+      <section anchor="bearers-vigilance">
+        <name>Employing RA-Guard</name>
+        <t>
+          Fake or malicious Link Vouchers can cause issues for nodes who do not yet have the state of an LV stored in
+          their local interface(s) on-link. Illegitimate VBs represent a threat more thoroughly explored in
+          <xref target="security-usurp"/>. Undesired or "bogus" RAs/Redirects are a known problem in local IPv6 networks
+          with no active protections, causing potential failure of on-link nodes. An excerpt from the RA-Guard RFC is noted:
+        </t>
+        <blockquote>
+          <xref target="RFC6105"/> describes a solution framework for
+          the rogue-RA problem <xref target="RFC6104"/> where network segments are designed
+          around a single L2-switching device or a set of L2-switching devices
+          capable of identifying invalid RAs and blocking them.  The solutions
+          developed within this framework can span the spectrum from basic
+          (where the port of the L2 device is statically instructed to forward
+          or not to forward RAs received from the connected device) to advanced
+          (where a criterion is used by the L2 device to dynamically validate
+          or invalidate a received RA, this criterion can even be based on SEND
+          mechanisms).
+        </blockquote>
+        <t>
+          The RA-Guard system SHOULD be augmented and deployed with VBA-aware functions, capable of tracking the state
+          of Link Vouchers and LOVMA channel elections. This will allow an intermediate network device, such as
+          a switch, to only require RA-Guard Learning mode for a short initial period and then to subsequently "follow"
+          the correct LV around, similar to what other network nodes do.
+        </t>
+        <t>
+          The difference with RA-Guard in this scenario is to of course enable and disable RA/Redirect packet forwarding
+          when and where appropriate based on what the system understands about the state of vouchers on the network. One
+          notable exception to this, however, is that a RA-Guard implementation MAY drop its protections if and only if
+          the most recent and legitimate LV has expired without a successor VB. This is because some responsible VB needs
+          to be able to supersede a "dead" or expired LV.
+        </t>
+        <t>
+          In the case where the elected VB is NOT a link router nor responsible for routing traffic, and NDP Redirect
+          packets are being used with the LV option, a Redirect-aware flavor of RA-Guard is strongly RECOMMENDED to also
+          include these in its learning processes.
+        </t>
+        <t>
+          The exact deployment of RA-Guard is beyond the scope of this document, but it is strongly RECOMMENDED in
+          order to ensure VBAs faithfully serve their purpose during the ND Address Resolution process. Appointments
+          or elections of new VBs should be considered with caution, because the lack of PKI introduces a problem with
+          bogus claims of INITIAL identity.
         </t>
       </section>
     </section>
@@ -1810,15 +1824,73 @@ COMPUTE & CACHE:
           with this option is of course based on the IEMs of the two communicating interfaces during this exchange.
         </dd>
       </dl>
+
+      <section anchor="optimizations-preemption">
+        <name>A Note About Packet Loss &amp; Speed</name>
+        <t>
+          This document proposes various optimizations to get Voucher-Based Addressing to 
+        </t>
+        <t>
+          <xref target="RFC9131"/> proposes a more 'eager' NDP solution that gratuitously updates cache entries between nodes,
+          for example/ Such a preemptive solution carries significant advantages for network responsiveness, but also
+          significant disadvantages from a local security perspective: specifically in the case of denial-of-service attacks
+          flooding nodes with bogus gratuitous NAs that might consume absurd system resources.
+        </t>
+        <t>
+          It is left to implementations to best balance these benefits and caveats. Further discussion can be found in
+          <xref target="security"/>.
+        </t>
+      </section>
     </section>
 
     <section anchor="transitions">
       <name>Transition Considerations</name>
       <t>
+        This document would be unrealistic to assume that VBAs could be deployed simultaneously across all hosts in
+        even relatively tiny local subnets. There will undoubtedly be network devices present which have no support
+        for VBAs; while especially true at the time of writing this document, it is certain that some hardware vendors
+        and software developers will never implement the protocol or provide necessary operable support.
       </t>
+      
+      <section anchor="transitions-dualstack">
+        <name>Dual-Stack Communications</name>
+        <t>
+          A pure IPv6 local network using the AGV IEM across its nodes will simply not be able to communicate
+          bidirectionally with node(s) lacking VBA support. Bidirectional traffic between the VBA-unaware node and the
+          network gateway will be dropped due to the requirements of address verifications. However, in the case of
+          dual-stack LANs, IPv4 traffic can be used as an insecure (read: spoofable) failsafe protocol when connecting
+          hosts are explicitly aware of a route in both protocol stacks, such as between a LAN client and a gateway router.
+        </t>
+        <t>
+          The Happy Eyeballs algorithm from <xref target="RFC6555"/> specifies a connection methodology that simultaneously
+          attempts IPv4 and IPv6 connections, preferring IPv6 communication. Destination hosts are often selected from a
+          pool of Domain Name System (DNS) query results in a round-robin fashion. For local networks using AGV mode, the
+          IPv6 network will appear unavailable and broken to the unsupporting node(s): thus, they should fall back to using
+          IPv4 in the case where both stacks are supported.
+        </t>
+        <t>
+          This will permit some degree of communication for unsupporting nodes, both on the local link and off-link,
+          wherever IPv4 traffic is allowed.
+        </t>
+
+      <section anchor="transitions-iem">
+        <name>Tweaking Interface Enforcement Modes</name>
+        <t>
+          Local IEMs can be adjusted on hosts communicating directly with unsupporting nodes to better accommodate their
+          lack of verified VBAs on-link. For example, two local VBA-enabled nodes corresponding with an ancient device might
+          opt to use the AGVL IEM. This could allow them to strongly prefer Secured devices for the rest of the network (such
+          as the default gateway) while being accepting of ND Address Resolution traffic that does not contain any Secured
+          responses.
+        </t>
+        <t>
+          In the case of a subnet router in a mixed network -- that is, a LAN consisting of VBA-enabled and unaware nodes
+          alike -- using the AGVL IEM can once again prove very advantageous for the sake of accommodation. Assuming most
+          nodes use VBAs and a few cannot, the only those few are at risk of ND Address Resolution spoofing attacks.
+        </t>
+      </section>
     </section>
     
-    <section anchor="Security">
+    <section anchor="security">
       <name>Security Considerations</name>
       <t>
         This section includes discussions on various subjects related to the security of Voucher-Based Addresses.
@@ -1881,7 +1953,7 @@ COMPUTE & CACHE:
           The 'address storm' prevention relying on this mechanism aims to stop malicious VBs from over-rotating
           the current LV and completely exhausting network nodes who will be very busy trying to keep up with
           VBA generation and verification optimizations. Compensating for a slow VB requires malicious nodes to
-          force that same legitimate VB off the network for longer in order to usurp them as the VB.
+          force that same legitimate VB off the network for longer in order to usurp them as the link VB.
         </t>
         <t>
           Hijacking, tampering with, or otherwise desynchronizing the LV can be used for either malicious denial
@@ -1904,15 +1976,15 @@ COMPUTE & CACHE:
           </li>
           <li>
             Malicious VBs could transmit an LV dictating use of a KDF algorithm with very minimal requirements. For
-            example, PBKDF2_SHA256 with an iterations factor of 1. Targeting hosts with low iterations counts would
+            example, PBKDF2_SHA256 with an ITERATIONS_FACTOR of 1. Targeting hosts with low iterations counts would
             of course be most efficient for discovering a valid link-layer identifier that produces an address
             collision. Weakening the entire subnet in this way affords the attacker a greater advantage by greatly
-            reducing the computation costs of MITM attacks.
+            reducing the computation costs of on-path attacks.
           </li>
         </ul>
         <t>
           All of the concerns in this section allude to the importance of guarding the local network from rogue
-          LV options in the first place. Though MITM attacks are still LESS feasible with VBAs enabled, regardless
+          LV options in the first place. Though on-path attacks are still LESS feasible with VBAs enabled, regardless
           of LV control, that still does not outweigh the risks assessed above. <xref target="bearers-vigilance"/>
           has more information about RA-Guard and protecting against the rogue LV problem.
         </t>
@@ -1934,7 +2006,7 @@ COMPUTE & CACHE:
         <name>Denial of Service</name>
         <t>
           This brief section discusses concerns about potential denial of service attack vectors when
-          employing VBAs.
+          employing VBAs. Solutions may or may not be provided along with each section.
         </t>
 
         <section anchor="security-dos-na-floods">
