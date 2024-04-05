@@ -21,7 +21,7 @@
 
 <rfc
   xmlns:xi="http://www.w3.org/2001/XInclude"
-  category="exp"
+  category="std"
   docName="draft-puhl-6man-ndp-vba-00"
   ipr="trust200902"
   obsoletes=""
@@ -31,7 +31,7 @@
   consensus="true"
   version="3">
   <front>
-    <title abbrev="ndp-vba">IPv6 Voucher-Based Address Generation &amp; Verification</title>
+    <title abbrev="ndp-vba">IPv6 Voucher-Based Addressing for Neighbor Discovery Address Resolution</title>
     <seriesInfo name="Internet-Draft" value="draft-puhl-6man-ndp-vba-00"/>
     <author fullname="Zack Puhl" initials="Z." surname="Puhl">
       <organization>University of Michigan</organization>
@@ -56,15 +56,15 @@
     <keyword>privacy</keyword>
     <abstract>
       <t>
-        This document specifies an extensible IPv6 unicast address generation and verification methodology for local
+        This document specifies an extensible IPv6 address generation and verification methodology for local
         networks. Individual link-layer identifiers are bound to sets of deterministic output addresses, which
         maintain user privacy regardless of link-layer identifier stability. Link Vouchers distributed by Router
         Advertisements form a shared consensus between neighbors of the parameters used in the SLAAC address
         generation process. Cryptographic key derivation functions are used to generate pseudo-random addresses and
         to intentionally stretch address computation times. Host parameters can be used to derive any number of both stable
-        and ephemeral, privacy-focused addresses for each on-link prefix and at the link-local scope. NDP
-        exchanges can then verify the link-layer-address-to-IP bindings to prevent on-path attacks in local
-        networks.
+        and ephemeral, privacy-focused addresses for each on-link prefix and at the link-local scope. Neighbor Discovery
+        Address Resolution implementations can then verify the link-layer-address-to-IP bindings to prevent on-path attacks
+        in local networks.
       </t>
     </abstract>
   </front>
@@ -73,23 +73,53 @@
   <middle>
     <section anchor="intro">
       <name>Introduction</name>
-      <!-- TODO -->
       <t>
-        Voucher-Based Addressing offers an alternative solution to the address ownership problem,
-        enables extensible and private unicast address generation, and prevents on-path attacks in IPv6 local networks.
-        Using a mutual key derivation function to map public input components to deterministic outputs, link-layer
-        identifiers are reliably coupled to sets of IPv6 addresses and subsequently verified by neighboring nodes. All
-        verifications are decentralized and do not require public-key cryptography; only shared consensus on a distributed,
-        pseudo-random value used to seed the address generation procedure. Despite its determinism, this generation and
-        verification process creates IPv6 addresses appearing statistically random to off-link devices, who are by design
+        An on-path attack, historically more well-known as a Man-in-the-Middle (MITM) attack, occurs when a malicious
+        network node inserts itself into a communication between two other nodes -- often transparently -- in order to read and/or
+        modify the ongoing communication. This type of weakness is a critical point of concern for network administrators, since the
+        high feasibility of on-path attacks in local networks, where nodes are least likely to encrypt communications,
+        compromises any guarantees of confidentiality, integrity, and availability.
+      </t>
+      <t>
+        Neighbor Discovery <xref target="RFC4861"/> is self-aware of its capability for misuse in on-path (or redirect) attacks.
+        Section 11 of the RFC provides a brief threat analysis followed by pointers to both SEND <xref target="RFC3971"/> and Security
+        Associations with native IPSec (Section 4 of <xref target="RFC4301"/>) as solutions for its weaknesses. Though SEND has
+        long been considered the canonical solution for its namesake (securing ND), it and its complementary Cryptographically
+        Generated Addresses <xref target="RFC3972"/> have struggled to achieve widespread usage due to their deployment complexities.
+      </t>
+      <t>
+        Meanwhile, war has raged about the best way to generate a balanced set of IP addresses per-node, for different use-cases, that
+        can preserve user privacy. <xref target="RFC8981"/> discusses the generation of both stable and temporary SLAAC addresses. It
+        slightly augments the generation process of SOIIs <xref target="RFC7217"/> and provides insight on more recent address
+        generation methodologies. <xref target="RFC7721"/> and
+        <xref target="RFC8064"/> express deep concerns about using link-layer identifiers in the address generation process, citing network
+        activity correlation, location tracking, address scanning, and targeted exploitation as significant problems.
+      </t>
+      <t>
+        Neighbor Discovery Address Resolution (Section 7.2 of <xref target="RFC4861"/>) establishes a process for discovering the
+        link-layer identifier of a neighbor's on-link IP address. But this process faithfully relies on some nebulous neighbor owning the target
+        IP address to respond with its own link-layer identifier (and not, e.g., a malicious host to respond with a redirected link-layer address).
+        If the target IP address is already being softly correlated with a link-layer identifier, it is then sensible to tightly bind the two together; such
+        that the IP address is provably derived from the link-layer identifier.
+        However, in light of address privacy warfare, this binding needs to be done in a way where temporary and stable identifiers can
+        coexist and not suffer the aforementioned privacy concerns.
+      </t>
+      <t>
+        Voucher-Based Addressing offers local IPv6 networks (1) a common procedure for binding link-layer addresses to IP addresses,
+        (2) rotatable and private IP address generation, and (3) prevention of subversive on-path attacks.
+        Address bindings use mutual key derivation functions to map public input components to deterministic output IP addresses.
+        These bindings can be subsequently verified by neighboring nodes who seek to assert a target's address "ownership".
+        All verifications are decentralized and do not require public-key cryptography; only shared consensus on a distributed,
+        pseudo-random value used to seed the address generation procedure. Despite its determinism, the address generation
+        process creates rotatable IP addresses which appear statistically random to off-link devices, who are by design
         unaware of all input parameters associated with the address.
       </t>
       <t>
         This document thus represents a cross-application of cryptographic
         key-stretching techniques to link-layer address bindings in generating random IPv6 network addresses. The result
-        is a secure, high-impact, low-complexity, optional complement to the Neighbor Discovery Address Resolution process,
-        with very minimal changes to Neighbor Discovery options, formats, or behaviors. It is a proposed alternative to
-        SEND <xref target="RFC3971"/>, CGAs <xref target="RFC3972"/>, and Semantically Opaque Interface Identifiers
+        is a secure, high-impact, low-complexity, optional shim for the Neighbor Discovery Address Resolution process,
+        with minimal changes to Neighbor Discovery options, formats, or behaviors. It is proposed as an alternative to
+        SEND <xref target="RFC3971"/>, CGAs <xref target="RFC3972"/>, and SOIIs
         <xref target="RFC7217"/> in traditional LANs using "reactive" NDP, and it does not intend to obsolete any other document.
       </t>
       
@@ -104,59 +134,160 @@
           all capitals, as shown here.
         </t>
       </section>
+
+      <section anchor="intro-background">
+        <name>Background</name>
+        <t>
+          This document assumes the reader's very basic familiarity with the following specifications. These are merely OPTIONAL
+          in order to understand the concepts proposed in this document, but will provide plenty of helpful context.
+        </t>
+        <ul spacing="compact">
+          <li>IP Version 6 Addressing Architecture <xref target="RFC4291"/>.</li>
+          <li>Neighbor Discovery for IP Version 6 <xref target="RFC4861"/>.</li>
+          <li>IPv6 Stateless Address Autoconfiguration <xref target="RFC4862"/>.</li>
+          <li>IPv6 Neighbor Discovery (ND) Trust Models and Threats <xref target="RFC3756"/>.</li>
+          <li>SEcure Neighbor Discovery (SEND) <xref target="RFC3971"/>.</li>
+          <li>Cryptographically Generated Addresses (CGA) <xref target="RFC3972"/>.</li>
+          <li>Semantically Opaque Interface Identifiers <xref target="RFC7217"/>.</li>
+          <li>Temporary Address Extensions for Stateless Address Autoconfiguration in IPv6 <xref target="RFC8981"/>.</li>
+          <li>Recommendation on Stable IPv6 Interface Identifiers <xref target="RFC8064"/>.</li>
+          <li>PKCS #5: Password-Based Cryptography Specification Version 2.1 <xref target="RFC8018"/> (primarily Sections 3 and 4).</li>
+        </ul>
+      </section>
     </section>
 
     <section anchor="terms">
       <name>Terminology</name>
-      <!-- TODO -->
       <t>
-        Many of the terms in this document are defined in Section 2.1 of the most current NDP standard <xref target="RFC4861"/>.
+        A glossary of terms related to this document, but not necessarily defined herein, is specified in this section. Items
+        appearing here may or may not be acronymized even in their first appearances in future sections (but never in section
+        headers), so knowledge of them is assumed henceforth.
       </t>
       <t>
-        An alphabetical glossary of terms related to this document, but not necessarily defined herein, is specified in this
-        section. Items appearing here may or may not be acronymized even in their first appearances in future sections (but
-        never in section headers), so knowledge of them is assumed henceforth.
+        To keep this section reasonable, please see Section 2.1 of <xref target="RFC4861"/> for defitions of the following
+        terms used equivalently in this document: neighbor, node, interface, link, address, router, host, on-link, off-link,
+        IP, ICMP, packet, and target. It is very important to understand these terms before reading this document.
       </t>
       <dl newline="true">
-        <dt>Voucher-Based Address (VBA)</dt>
-        <dd>An IPv6 address generated by a mixture of Link Voucher details, network interface details, and subnet details.</dd>
+        <dt>ND (sometimes NDP)</dt>
+        <dd>Neighbor Discovery (Protocol) <xref target="RFC4861"/>.</dd>
 
-        <dt>Link Voucher (LV)</dt> 
-        <dd>A data payload intended to be distributed by a responsible node on-link. Details are statefully maintained
-          on host network interfaces and used in both generating and verifying VBAs.</dd>
+        <dt>SEND</dt>
+        <dd>SEcure Neighbor Discovery <xref target="RFC3971"/>.</dd>
 
-        <dt>Local On-link Voucher Multicast Address (LOVMA)</dt>
-        <dd>A multicast group used by VBA-enabled hosts to get gratuitous information from the current Voucher Bearer or from
-          other VBA-enabled neighbors.</dd>
+        <dt>CGA</dt>
+        <dd>Cryptographically Generated Address <xref target="RFC3972"/>.</dd>
 
-        <dt>Voucher Bearer (VB)</dt>
+        <dt>SOII</dt>
+        <dd>Semantically Opaque Interface Identifier <xref target="RFC7217"/>.</dd>
+
+        <dt>NDAR (sometimes AR)</dt>
+        <dd>The Neighbor Discovery Address Resolution process; see Section 7.2 of <xref target="RFC4861"/>.</dd>
+
+        <dt>NC</dt>
+        <dd>Neighbor Cache, as specified in Section 5.1 of <xref target="RFC4861"/>.</dd>
+
+        <dt>RS, RA, NS, and NA</dt>
+        <dd>A collection of abbreviations from NDP <xref target="RFC4861"/>.
+          Respectively: Router Solicitation, Router Advertisement, Neighbor Soliciation, Neighbor Advertisement.</dd>
+
+        <dt>NUD</dt>
+        <dd>Neighbor Unreachability Detection (Section 7.3 of <xref target="RFC4861"/>).</dd>
+
+        <dt>LLADDR or LLID</dt>
+        <dd>A shorthand representation for the term "Link Layer Address" or "Link Layer Identifier".
+          Both terms are synonymous and describe any Individual link-layer identifier for a network interface.</dd>
+
+        <dt>IID</dt>
+        <dd>Interface Identifier. The unique identifier of an interface on a network. See Section 2.5.1 of <xref target="RFC4291"/>.</dd>
+
+        <dt>SLLAO</dt>
+        <dd>Source Link-Layer Address Option. An ND option indicating the LLADDR of the packet sender <xref target="RFC4861"/>.</dd>
+
+        <dt>TLLAO</dt>
+        <dd>Target Link-Layer Address Option. An ND option indicating the LLADDR of the NDAR target <xref target="RFC4861"/>.</dd>
+
+        <dt>DAD</dt>
+        <dd>Duplicate Address Detection (Section 5.4 of <xref target="RFC4862"/>).</dd>
+        
+        <dt>SLAAC</dt>
+        <dd>Stateless Address Autoconfiguration <xref target="RFC4862"/>.</dd>
+
+        <dt>PKI</dt>
+        <dd>Public Key Infrastructure. A system that uses asymmetric encryption to verify user identities and secure network
+          communications. Often in reference to some larger specification such as X.509 PKI.</dd>
+
+        <dt>VBA</dt>
         <dd>
-          The on-link node solely responsible for dissemination of the LV and authorized by any potential link guarding to
-          transmit Router Advertisements or Redirects with an LV attached.
+          <t>Could mean one of two things depending on context:</t>
+          <ul>
+            <li>Voucher-Based Addressing (such as "the VBA-enabled subnet" or "VBA mandates this").
+              A reference to this document and its contents.</li>
+            <li>Voucher-Based Address (such as "a VBA" or "using VBAs").
+              An IPv6 address generated by a mixture of Link Voucher details, network interface details, and subnet details.</li>
+          </ul>
         </dd>
 
-        <dt>Voucher Status Report (VSR)</dt>
-        <dd>A type of data payload sent by VBA-enabled nodes to the LOVMA. Shares information about the node's VBA-related
-          preferences. Mainly used in optimizations and is an optional protocol feature.</dd>
+        <dt>LV</dt> 
+        <dd>ND Link Voucher option. A data payload intended to be distributed by a responsible node on-link. Details are statefully
+          maintained on host network interfaces and used in both generating and verifying VBAs.</dd>
 
-        <dt>Interface Enforcement Mode (IEM)</dt>
-        <dd>The operating mode of the VBA-enabled network interface controlling interface reactions to unverified neighbors.</dd>
+        <dt>VS</dt>
+        <dd>ND Voucher Summary option. Used to hint to receivers which LV identifier is being used by the sending host.</dd>
 
-        <dt>Neighbor</dt>
-        <dd>Another connected node on the same link.</dd>
+        <dt>LOVMA</dt>
+        <dd>Local On-link Voucher Multicast Address. A multicast group used by VBA-enabled hosts to get gratuitous information from
+          the current Voucher Bearer or from other VBA-enabled neighbors.</dd>
 
-        <dt>Key Derivation Function</dt>
-        <dd>Definition of the second term [REPLACE/DELETE]</dd>
+        <dt>VB</dt>
+        <dd>Voucher Bearer. The on-link node solely responsible for dissemination of the LV and authorized by any potential link
+          guarding to transmit Router Advertisements or Redirects with an LV attached.</dd>
 
-        <dt>Link</dt>
-        <dd></dd>
+        <dt>VSR</dt>
+        <dd>Voucher Status Report. A type of data payload sent by VBA-enabled nodes to the LOVMA. Shares information about the node's
+          VBA preferences. Mainly used in optimizations and is an optional protocol feature.</dd>
 
-        <dt>Node</dt>
-        <dd>A device that actively implements and uses IPv6 on the local network.</dd>
+        <dt>VCI</dt>
+        <dd>Voucher Capability Indication. A type of data payload sent by candidate VBs wishing to indicate their candidacy as a
+          future VB for the link.</dd>
+
+        <dt>VHA</dt>
+        <dd>Voucher Handoff Advertisement. A type of data payload sent by the current VB to the LOVMA, signing off on an election
+          process for a new VB (and thus LV) on-link.</dd>
+
+        <dt>IEM</dt>
+        <dd>Interface Enforcement Mode. The operating mode of the VBA-enabled network interface controlling interface address
+          generation and verification behaviors with regard to this specification.</dd>
+
+        <dt>LL2IP</dt>
+        <dd>Used to shorten the phrase "link-layer-address-to-IP" when discussing address bindings.</dd>
+
+        <dt>Binding</dt>
+        <dd>Used primarily to describe a coupling between two types of addresses. In the case of this document, it often references
+          LL2IP bindings, where Link-Layer Identifiers are 'bound' to one or more IP addresses.</dd>
+
+        <dt>KDF</dt>
+        <dd>Key Derivation Function, as defined in Section 3 of <xref target="RFC8018"/>.</dd>
+
+        <dt>Salt</dt>
+        <dd>An extra random value used in computing a KDF which makes it impossible for attackers to precompute output values.
+          See Section 4.1 of <xref target="RFC8018"/> for more information.</dd>
+
+        <dt>IC</dt>
+        <dd>Iterations Count. For the sake of clarity, this term is often not abbreviated in this document. Defined as an integer
+          value representing the amount of times a KDF is iterated to produce a final output value. See Section 4.2 of
+          <xref target="RFC8018"/> for more information.</dd>
 
         <dt>Hextet</dt>
         <dd>A 16-bit aggregation; data that is 16 bits in size. Can also be called a 'chomp'.</dd>
+
+        <dt>RA-Guard</dt>
+        <dd>Router Advertisement Guard, as specified in <xref target="RFC6105"/>.</dd>
       </dl>
+      <t>
+        SPECIAL NOTE: Any use of the terms 'IP', 'DHCP', or 'ICMP' in the following sections of this document are synonymous with
+        'IPv6', 'DHCPv6', and 'ICMPv6', respectively. When referencing the IPv4 versions of these protocols, it will be explicitly noted.
+      </t>
     </section>
 
     <section anchor="summary">
@@ -171,7 +302,7 @@
       <section anchor="summary-overview">
         <name>Protocol Design</name>
         <t>
-          A Voucher-Based Address is defined as any IPv6 unicast address derived from on-link voucher information.
+          A Voucher-Based Address is defined as any unicast IP address derived from on-link voucher information.
           The address derivation process is underpinned by a static, well-known procedure parameterized by a mixture
           of Link Voucher details and public node information. This same derivation process is used by other on-link
           nodes to independently verify the link-layer binding of the address during the ND Address Resolution process.
@@ -187,7 +318,7 @@
           <t>
             VBAs are generated by using the link-layer identifier of the underlying, assigned interface as an input.
             They operate on the assumption that link-layer identifiers MUST be unique on the same broadcast domain at
-            any moment in time, in order for higher-level protocols to successfully operate. Thus, VBAs are directly
+            any moment in time in order for higher-level protocols to successfully operate. Thus, VBAs are directly
             derived from this on-link 'identity'.
           </t>
           <t>
@@ -228,9 +359,9 @@
             reliably bound to an address suffix that is fixed at 64 bits in length.
           </t>
           <t>
-            Hashing a link-layer identifier and producing an output will only create a one-to-one binding, but many IPv6
+            Hashing a link-layer identifier and producing an output will only create a one-to-one binding, but many IP
             address generation schemes already offer ways to derive MANY privacy-focused addresses from the link-layer
-            identifier (see, e.g., section 5 and Appendix A.3 of  <xref target="RFC7217"/>). These addresses are usually NOT reversible,
+            identifier (e.g., Section 5 and Appendix A.3 of <xref target="RFC7217"/>). These addresses are usually NOT reversible,
             by design, unless reversing nodes are aware of all input parameters for the underpinning PRF. This is intended
             to preserve the privacy of the address.
           </t>
@@ -284,7 +415,7 @@
           <t>
             The employment of cryptographic KDFs drastically reduces the capacity for would-be attackers to discover
             address collisions and use them for malicious purposes (i.e., on-path attacks). Section 3 of <xref target="RFC8018"/>
-            defines a Key Derivation Function in the exact manner it applies to this specification:
+            outlines a Key Derivation Function in the exact manner it intends to apply to this specification:
           </t>
           <blockquote>
               Another approach to password-based cryptography is to construct key
@@ -354,7 +485,7 @@
           <t>
             The application of VBAs against adversaries must be explored from a broad perspective before protocol
             specificities are introduced. Notably, this exploration assumes a hypothetical VBA deployment that is using the
-            AGV Interface Enforcement Mode to enact full, strict protections on IPv6 address ownership
+            AGV Interface Enforcement Mode to enact full, strict protections on IP address ownership
             (<xref target="summary-interfaces-mode"/>).
             With the context of the design goals of this document, of various NDP problem statements (Section 4 of
             <xref target="RFC3756"/>), and of IPv6 address privacy concerns (<xref target="RFC8064"/>):
@@ -668,7 +799,7 @@ Formulas:
           </artwork>
         </figure>
         <t>
-          The Interface Identifier (IID) for all VBAs, called a SUFFIX, embeds two important details for verification:
+          The IID for all VBAs, called a SUFFIX, embeds two important details for verification:
         </t>
         <ul>
           <li>
@@ -710,7 +841,7 @@ Formulas:
               <li>
                 The raw link-layer identifier of the network interface for which addresses are being generated.
                 Note that since the Salt value is a variable-length string, this is NOT REQUIRED to be an IEEE 802 MAC
-                address, but it MUST represent the link-layer address to which the IPv6 address will be bound.
+                address, but it MUST represent the link-layer address to which the IP address will be bound.
               </li>
               <li>The string "vba".</li>
               <li>The raw PREFIX (subnet prefix) value. This MUST match the prefix for which the VBA will be generated.</li>
@@ -810,7 +941,7 @@ Formulas:
           <dd>Returns a hextet to insert into a generated address. A bitwise complement of the result of an iterations
             count XOR'd with the first hextet of a Link Voucher seed value.</dd>
           <dt><tt>Z'(B, LV) = ~(B[8..9] ^ LV.seed[0..1])</tt></dt>
-          <dd>Returns an iterations count derived from a full IPv6 address. In this case, 'B[8..9]' is equal to
+          <dd>Returns an iterations count derived from a full IP address. In this case, 'B[8..9]' is equal to
             the length and position of the embedded hextet calculated by the function 'Z' above.</dd>
         </dl>
         <t>
@@ -875,11 +1006,11 @@ Formulas:
             </t>
           </section>
 
-          <section anchor="behavioral-cache-unsolicited">
+          <!-- <section anchor="behavioral-cache-unsolicited">
             <name>Receiving Unsolicited Traffic Needing No Response</name>
             <t>
               Any node receiving unsolicited traffic from a neighbor, for which no response is required from
-              the receiver -- such as UDP-based applications -- does not need to interact with the VBA system
+              the receiver, such as UDP-based applications, does not need to interact with the VBA system
               at all. The receiving node MAY choose to validate the sender according to this specification.
               This would necessitate the ND Address Resolution process be conducted from the receiver for the
               sender's link-layer address.
@@ -896,6 +1027,20 @@ Formulas:
               from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
               which no response is necessary does not merit an explicit requirement that the sending neighbor
               be verified.
+            </t>
+          </section> -->
+
+          <section anchor="behavioral-cache-expirations">
+            <name>Link Voucher Expirations</name>
+            <t>
+              Any expiration of a current LV used to verify VBAs MUST cause the dynamic NC to be immediately cleared.
+              This could occur for any number of reasons, but the expiration indicates the LV is no longer in active use
+              and therefore any addresses which were previously cached MUST be dropped. Implementations MAY wish to
+              categorize or label NC entries by the LV ID used to verify them as an optimization, so that other NC entries
+              will not be forcibly cleared (such as those from a new LV after a handoff occurs).
+            </t>
+            <t>
+              Static mappings entered into the NC MUST be preserved regardless of LV expirations.
             </t>
           </section>
         </section>
@@ -1500,7 +1645,7 @@ COMPUTE & CACHE:
         Current link Voucher Bearers are always REQUIRED to join the LOVMA group.
       </t>
       <t>
-        This multicast group is located at the IPv6 address FF02::ABBA. A helpful mnemonic to remember this address is to
+        This multicast group is located at the IP address FF02::ABBA. A helpful mnemonic to remember this address is to
         think of "ABBA" as the closest possible hexademical rendition of "a VBA".
       </t>
       <t>
@@ -1839,10 +1984,12 @@ COMPUTE & CACHE:
           include these in its learning processes.
         </t>
         <t>
-          The exact deployment of RA-Guard is beyond the scope of this document, but it is strongly RECOMMENDED in
-          order to ensure VBAs faithfully serve their purpose during the ND Address Resolution process. Appointments
-          or elections of new VBs should be considered with caution, because the lack of PKI introduces a problem with
-          bogus claims of INITIAL identity.
+          Use of RA-Guard is primarily suggested for networks with a revolving door of clients, such as public networks,
+          or networks which need to fortify and guarantee their security posture.
+          The exact deployment of RA-Guard is beyond the scope of this document, but it is strongly RECOMMENDED where
+          possible in order to ensure VBAs faithfully serve their purpose during the ND Address Resolution process.
+          Appointments or elections of new VBs should be considered with caution, because the lack of PKI introduces a
+          problem with bogus claims of INITIAL identity.
         </t>
       </section>
     </section>
@@ -1965,6 +2112,14 @@ COMPUTE & CACHE:
           nodes use VBAs and a few cannot, the only those few are at risk of ND Address Resolution spoofing attacks.
         </t>
       </section>
+    </section>
+
+    <section anchor="comparison">
+      <name>Comparison with Canonical Solutions</name>
+      <t>
+        This section presents a brief left-right comparison of this proposal with related solutions that are widely considered
+        as canonical.
+      </t>
     </section>
     
     <section anchor="security">
@@ -2227,6 +2382,12 @@ COMPUTE & CACHE:
         </t>
       </section>
 
+      <section anchor="security-dhcp">
+        <name>Deployments using DHCP</name>
+        <t>
+        </t>
+      </section>
+
       <section anchor="security-static">
         <name>Static Addresses</name>
         <t>
@@ -2263,7 +2424,7 @@ COMPUTE & CACHE:
             </t>
             <t>
               Therefore, a static entry in the Neighbor Cache of the router should correlate link-layer identifier(s) to the
-              static IPv6 address(es) on each host. Doing this for each long-term static address will mitigate any potential
+              static IP address(es) on each host. Doing this for each long-term static address will mitigate any potential
               on-path attacks for both neighbors exchanging packets, while still ensuring all other ND Address Resolutions
               verify according to VBA rules and the level of strictness configured on each network interface.
             </t>
@@ -2414,6 +2575,7 @@ COMPUTE & CACHE:
       <name>References</name>
       <references>
         <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4291.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
@@ -2421,10 +2583,12 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6105.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7721.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6104.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7217.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3756.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8064.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8981.xml"/>
         <!-- Default KDF Definitions -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9106.xml"/>
@@ -2432,7 +2596,6 @@ COMPUTE & CACHE:
       </references>
       <references>
         <name>Informative References</name>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4291.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4429.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7527.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/>
@@ -2441,6 +2604,7 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5758.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6555.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3279.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4301.xml"/>
         <reference anchor="ITU.X690.2002" target="https://www.itu.int/rec/T-REC-X.690">
           <front>
             <title>Information Technology - ASN.1 encoding rules: Specification of Basic Encoding Rules (BER),
