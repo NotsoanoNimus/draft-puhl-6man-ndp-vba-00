@@ -212,7 +212,6 @@
 
         <section anchor="summary-overview-cryptography">
           <name>Key Derivation Functions &amp; Address Privacy</name>
-          <!-- Touch on addresses using a hash function to gen PR addrs. Briefly review KDFs vs plain hashing. -->
           <t>
             Link-layer bindings using a simple embedding or hashing scheme should suffice if the goals of VBAs stopped at
             address ownership. For example, modified EUI-64 interface identifiers are formed by a long-established address
@@ -484,17 +483,21 @@
 
             <dt><tt>AGVL - Address Generation &amp; Verification with Levels</tt></dt>
             <dd>Both address generation and verification procedures are employed, but verification failures MUST
-              NOT be strictly enforced during NDP Address Resolution. Neighbors whose VBA(s) successfully verify
+              NOT be strictly enforced during ND Address Resolution. Neighbors whose VBA(s) successfully verify
               MUST be marked or indicated locally as "Secured". A neighbor which fails to verify
               MUST be indicated as "Unsecured" and given less trust or authority than "Secured" responses.</dd>
           </dl>
           <t>
-            For AGVL mode, the Secured and Unsecured distinction is adopted from SEND <xref target="RFC3971"/>.
+            For AGVL mode, the Secured and Unsecured distinction is adopted from Section 8 of SEND <xref target="RFC3971"/>.
             If an AGVL interface receives multiple Neighbor Advertisement responses, it MUST strongly prefer Secured
             NAs over Unsecured NAs to determine which link-layer address is legitimate during the Address Resolution
             process. If multiple Secured responses are received, each with different link-layer addresses, then there
             is a VBA collision and the behavior of the interface is undefined. In this rare case, the pool of Secured
             responses are equally valid VBAs, so it is left to the implementation to decide the correct course of action.
+          </t>
+          <t>
+            Implementations MAY opt to treat nodes with either the Secured or Unsecured distinctions with their own
+            custom behavior(s) based on the operating environment in which VBAs are deployed.
           </t>
         </section>
 
@@ -764,12 +767,12 @@ Formulas:
           <name>The Voucher-Based Address Verification Procedure</name>
           <artwork type="ascii-art" name="vbaVerification.txt">
             <![CDATA[
- ,-- [advertise] <---.
+ ,-- [advertise] <---. <======== (unicast NA)
  V       (2)         |
 |A|{LV}             |B|{LV}{MAC}
  |   |               |      |
- +---+-> [solicit] --' <====|=== (solicited-node)
- |   |      (1)             |
+ +---+-> [solicit] --' <====|=== (solicited-node
+ |   |      (1)             |      multicast NS)
  |   |                      |
  |   +---------+-------.    |
  |   |         |       |    |
@@ -818,6 +821,198 @@ Formulas:
           See <xref target="appendix-code-verification"/> for sample code in the C programming language which
           might better demonstrate VBA address verification.
         </t>
+      </section>
+
+      <section anchor="behavioral">
+        <name>Behavioral Neighbor Discovery Changes</name>
+        <t>
+          This section describes the requirements and implications of VBAs with regard to ordinary NDP. Simple
+          amendments to NDP are necessary to secure the Address Resolution process; any change not explicitly
+          declared in this section default to the typical NDP behavior <xref target="RFC4861"/>.
+        </t>
+
+        <section anchor="behavioral-when">
+          <name>The 'When' of Address Verification</name>
+          <t>
+            VBA verification is an expensive process that is ideally performed as seldom as possible, while still
+            providing assurance against on-path attacks. As such, this document mandates that the Address Verification
+            MUST be performed ONLY when updating or creating a Neighbor Cache (NC) entry.
+          </t>
+        </section>
+
+        <section anchor="behavioral-cache">
+          <name>Protecting the Neighbor Cache</name>
+          <t>
+            The primary verification goal of VBA verification results in a symmetric computation that can be costly
+            for low-power nodes or other embedded systems. By requiring address verification ONLY when interacting
+            with the local Neighbor Cache, nodes do not need to perform the entire verification procedure as
+            frequently.
+          </t>
+          <t>
+            This section discusses some behavioral ND changes regarding the host's Neighbor Cache. The changes
+            are aimed at a balanced mixture of optimization and security.
+          </t>
+
+          <section anchor="behavioral-cache-rxns">
+            <name>Receiving Neighbor Solicitations</name>
+            <!-- DO NOT EAGERLY CACHE WITHOUT VERIFYING. -->
+            <t>
+              Section 7.2.3 of <xref target="RFC4861"/> dictates that recipients of NS messages with a SLLAO attached
+              SHOULD create or update a NC entry. 
+            </t>
+          </section>
+
+          <section anchor="behavioral-cache-unsolicitedna">
+            <name>Unsolicited Neighbor Advertisements</name>
+            <!-- Section 7.2.5 of RFC4861. -->
+            <t>
+            </t>
+          </section>
+
+          <section anchor="behavioral-nud">
+            <name>Neighbor Unreachability Detection</name>
+            <t>
+            </t>
+          </section>
+
+          <section anchor="behavioral-cache-unsolicited">
+            <name>Receiving Unsolicited Traffic Needing No Response</name>
+            <t>
+              Any node receiving unsolicited traffic from a neighbor, for which no response is required from
+              the receiver -- such as UDP-based applications -- does not need to interact with the VBA system
+              at all. The receiving node MAY choose to validate the sender according to this specification.
+              This would necessitate the ND Address Resolution process be conducted from the receiver for the
+              sender's link-layer address.
+            </t>
+            <t>
+              If the sending neighbor is already in the receiver's neighbor cache, then the receiver SHOULD
+              NOT verify the address of the sender. The cache entry at the receiving side SHOULD NOT be updated
+              unless ND packets are exchanged which indicate that cached address bindings for the peer have not
+              changed.
+            </t>
+            <t>
+              VBA employment primarily supplies privacy-focused address generation and uses neighbor address
+              verification to provide proof of address ownership. The goal is to prevent on-path attackers
+              from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
+              which no response is necessary does not merit an explicit requirement that the sending neighbor
+              be verified.
+            </t>
+          </section>
+        </section>
+
+        <section anchor="behavioral-grand">
+          <name>Gratuitous Neighbor Discovery</name>
+          <t>
+            Gratuitious ND <xref target="RFC9131"/> allows routers to create STALE Neighbor Cache entries from received
+            Neighbor Advertisements, as an optimization to expedite the exchange of link-layer address bindings. VBAs
+            SHOULD support this option, as routers preemptively verifying a host's address bindings will allow the host to
+            communicate off-link much faster than if the router required a reverse Address Resolution process for the host.
+          </t>
+          <t>
+            Implementations SHOULD be flexible with Gratuitious ND as it applies to IEMs requiring address verification. If
+            a flurry of NA packets is received in an ostensible attack, the router might quickly find itself with too much
+            work and could start dropping packets. Therefore, implementations MAY want to toggle this feature reactively and
+            dynamically.
+          </t>
+        </section>
+
+        <section anchor="behavioral-dad">
+          <name>Duplicate Address Detection</name>
+          <t>
+            When generating a VBA, the node MUST follow the ordinary means of Duplicate Address Detection (DAD)
+            specified by the SLAAC RFC (section 5.4 of <xref target="RFC4862"/>). The DAD procedure SHOULD follow
+            any other applicable DAD optimizations (<xref target="RFC4429"/>, <xref target="RFC7527"/>, etc.).
+          </t>
+          <t>
+            Upon detecting a duplicate address, VBA-enabled nodes MUST by necessity to select another iterations
+            count 'L' value to generate a non-conflicting address. This can become computationally expensive
+            to recompute each new value based on the amount of address collisions, or in the case of denial of
+            service attacks.
+          </t>
+          <t>
+            To counter this weakness, implementations MUST employ one of two options based on the selected 'L' value:
+          </t>
+          <dl newline="true">
+            <dt><tt>L &gt;= 4</tt></dt>
+            <dd>Cache the 4 leading KDF computations (L-4 through L-1) during the DAD procedure.</dd>
+            <dt><tt>L &lt;  4</tt></dt>
+            <dd>Cache the result of the 'L' value only.</dd>
+          </dl>
+          <t>
+            Implementations SHOULD always prefer the option where the 'L' value is &gt;= 4, because
+            L-4 through L-1 are intermediate KDF results already required in order to produce the result at the final
+            iterations count. Conversely, any 'L' value under 4 will simply cache 'L' then increment the KDF iterations
+            by one for each DAD collision, up to 4 times.
+          </t>
+          <t>A figure representing this process visually is shown below:</t>
+          <figure>
+            <name>Using DAD with VBAs</name>
+            <artwork type="ascii-art" name="duplicateAddressDetection.txt">
+              <![CDATA[
+COMPUTE & CACHE:
+  N = Set of K(L', Key, Salt),
+    where L' :=
+      if L >= 4 :  { L-4, L-3, L-2, L-1, L },
+      else      :  { L }
+
+           (1)      +~~~~~~~~~~~~~~+
+ |A|{B}------------>| Normal SLAAC | (B :  Duplicate!)
+  |     v-----------|  DAD Process | (B':  Success!)
+  |  [FAIL]  (2)    +~~~~~~~~~~~~~~+
+  |                      ^
+  |                      |
+  `---> [cached (L-1)    |
+         or new (L+1)    | (3)
+         generates B'] --'
+              ]]>
+            </artwork>
+          </figure>
+          <t>
+            In the figure, (1) shows host 'A' engaged in DAD using the address 'B' generated with the iterations count 'L'.
+            After the collision is detected in (2), step (3) shows the new address "B'" being immediately tried using the
+            already-cached value 'L-1' as the input iterations count. The DAD process is then successful and there are no
+            on-link duplicate addresses.
+          </t>
+          <t>
+            To further cement this important optimization procedure, a written example process follows.
+          </t>
+          <ol>
+            <li>A new network host has received Link Voucher details; the voucher specifies using PBKDF2.</li>
+            <li>The host arbitrarily selects 0xFF04 as its input link-local iterations count.</li>
+            <li>The host will iterate the PBKDF2 function through 0xFEFF.</li>
+            <li>When retrieving the PBKDF2 cipher output for 0xFF00 (L - 4) iterations, it will cache this value.</li>
+            <li>It will do the same for the next 3 iterations counts (0xFF01, 0xFF02, &amp; 0xFF03).</li>
+            <li>It will compute the final PBKDF2 round at 0xFF04 iterations, and will use the result to generate
+              a valid VBA <xref target="summary-generate"/>.</li>
+            <li>When following the DAD procedure, a collision is detected.</li>
+            <li>The host then falls immediately back to the L - 1 iterations count of 0xFF03 to generate the VBA.</li>
+            <li>This new host address is completely different and does not register a DAD collision.</li>
+            <li>The optimization has successfully removed the need to recompute the PBKDF2 algorithm up to some new
+              iterations count, saving a significant amount of time in the VBA-enabled SLAAC process. Reducing the
+              chosen 'L' value by 1 results in a completely different pseudo-random address.</li>
+          </ol>
+          <t>
+            If all 5 attempted iterations counts result in DAD collisions, then the node MUST give up and use some other
+            implementation-specific course of action to contact an administrator or log a system management error.
+          </t>
+          <t>
+            Note that truly benign DAD collisions are a dangerous prospect for Voucher-Based Addressing. Address
+            collisions imply that a separate link-layer identifier with the SAME iterations count has somehow
+            generated a hash suffix collision, exposing the possibility for node impersonation in a rare occurrence.
+            Some implementations MAY wish to find trusted ways to detect such an occurrence, possibly by means
+            of intermediate device monitoring (such as switching hardware), and take action based on it.
+          </t>
+          <t>
+            Nodes encountering a duplicate address will by necessity require a different iterations count to
+            generate their current address. If the node uses a 'sticky' iterations count, then it is RECOMMENDED
+            that it send a gratuitous VSR update to the LOVMA with the new count (<xref target="lovma-packets-vsr"/>).
+          </t>
+          <t>
+            Protections to mitigate denial of service attacks based on DAD are beyond the scope of this document.
+            Since VBAs do not modify the actual DAD process, further research into DAD denial of service protections
+            will apply likewise when using VBAs.
+          </t>
+        </section>
       </section>
     </section>
 
@@ -1293,191 +1488,6 @@ Formulas:
             <dd>The receiver MUST ignore the VS option.</dd>
           </dl>
         </section>
-      </section>
-    </section>
-
-    <section anchor="behavioral">
-      <name>Behavioral Neighbor Discovery Changes</name>
-      <t>
-        This section describes the requirements and implications of VBAs with regard to ordinary NDP. Simple
-        amendments to NDP are necessary to secure the Address Resolution process.
-      </t>
-
-      <section anchor="behavioral-cache">
-        <name>Protecting the Neighbor Cache</name>
-        <t>
-          The primary verification goal of VBAs results in a symmetric computation that can be costly for
-          low-power nodes or other embedded systems. By requiring address verification ONLY when interacting
-          with the local Neighbor Cache, nodes do not need to perform the entire verification procedure as
-          frequently.
-        </t>
-        <t>
-          This section discusses some behavioral NDP changes regarding the host's Neighbor Cache. The changes
-          are aimed at a balanced mixture of optimization and security.
-        </t>
-
-        <section anchor="behavioral-cache-rxns">
-          <name>Receiving Neighbor Solicitations</name>
-          <!-- DO NOT EAGERLY CACHE WITHOUT VERIFYING. -->
-          <t>
-          </t>
-        </section>
-
-        <section anchor="behavioral-cache-unsolicitedna">
-          <name>Unsolicited Neighbor Advertisements</name>
-          <!-- Section 7.2.5 of RFC4861. -->
-          <t>
-          </t>
-        </section>
-
-        <section anchor="behavioral-nud">
-          <name>Neighbor Unreachability Detection</name>
-          <t>
-          </t>
-        </section>
-
-        <section anchor="behavioral-cache-unsolicited">
-          <name>Receiving Unsolicited Traffic</name>
-          <t>
-            Any node receiving unsolicited traffic from a neighbor, for which no response is required from
-            the receiver -- such as UDP-based applications -- does not need to interact with the VBA system
-            at all. The receiving node MAY choose to validate the sender according to this specification.
-            This would necessitate the neighbor verification process be conducted in reverse.
-          </t>
-          <t>
-            If the sending neighbor is already in the receiver's neighbor cache, then the receiver SHOULD
-            NOT verify the address of the sender. The cache MAY be refreshed if the link-layer IP address
-            bindings have not changed for the sender's cache entry.
-          </t>
-          <t>
-            VBA employment primarily supplies privacy-focused address generation and uses neighbor address
-            verification to provide proof of address ownership. The goal is to prevent on-path attackers
-            from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
-            which no response is necessary does not merit an explicit requirement that the sending neighbor
-            be verified.
-          </t>
-        </section>
-      </section>
-
-      <section anchor="behavioral-send-levels">
-        <!-- See Section 8 of RFC 3971. -->
-        <name>Secured &amp; Unsecured Distinctions</name>
-        <t>
-          Section x of the SEND RFC <xref target="RFC3971"/> defines a
-        </t>
-      </section>
-
-      <section anchor="security-dos-grand">
-        <name>Gratuitous Neighbor Discovery</name>
-        <t>
-          Gratuitious ND <xref target="RFC9131"/> allows routers to create STALE Neighbor Cache entries from received
-          Neighbor Advertisements, as an optimization to expedite the exchange of link-layer address bindings. VBAs
-          SHOULD support this option, as routers preemptively verifying a host's address bindings will allow the host to
-          communicate off-link much faster than if the router required a reverse Address Resolution process for the host.
-        </t>
-        <t>
-          Implementations SHOULD be flexible with Gratuitious ND as it applies to IEMs requiring address verification. If
-          a flurry of NA packets is received in an ostensible attack, the router might quickly find itself with too much
-          work and could start dropping packets. Therefore, implementations MAY want to toggle this feature reactively and
-          dynamically.
-        </t>
-      </section>
-
-      <section anchor="behavioral-dad">
-        <name>Duplicate Address Detection</name>
-        <t>
-          When generating a VBA, the node MUST follow the ordinary means of Duplicate Address Detection (DAD)
-          specified by the SLAAC RFC (section 5.4 of <xref target="RFC4862"/>). The DAD procedure SHOULD follow
-          any other applicable DAD optimizations (<xref target="RFC4429"/>, <xref target="RFC7527"/>, etc.).
-        </t>
-        <t>
-          Upon detecting a duplicate address, VBA-enabled nodes MUST by necessity to select another iterations
-          count 'L' value to generate a non-conflicting address. This can become computationally expensive
-          to recompute each new value based on the amount of address collisions, or in the case of denial of
-          service attacks.
-        </t>
-        <t>
-          To counter this weakness, implementations MUST employ one of two options based on the selected 'L' value:
-        </t>
-        <dl newline="true">
-          <dt>L &gt;= 4</dt>
-          <dd>Cache the 4 leading KDF computations (L-4 through L-1) during the DAD procedure.</dd>
-          <dt>L &lt;  4</dt>
-          <dd>Cache the result of the 'L' value only.</dd>
-        </dl>
-        <t>
-          Implementations SHOULD always prefer the option where the 'L' value is &gt;= 4, because
-          L-4 through L-1 are intermediate KDF results already required in order to produce the result at the final
-          iterations count. Conversely, any 'L' value under 4 will simply cache 'L' then increment the KDF iterations
-          by one for each DAD collision, up to 4 times.
-        </t>
-        <t>A figure representing this process visually is shown below:</t>
-        <figure>
-          <name>Using DAD with VBAs</name>
-          <artwork type="ascii-art" name="duplicateAddressDetection.txt">
-            <![CDATA[
-COMPUTE & CACHE:
-  N = Set of K(L', Key, Salt),
-    where L' :=
-      if L >= 4 :  { L-4, L-3, L-2, L-1, L },
-      else      :  { L }
-
-           (1)      +~~~~~~~~~~~~~~+
- |A|{B}------------>| Normal SLAAC | (B :  Duplicate!)
-  |     v-----------|  DAD Process | (B':  Success!)
-  |  [FAIL]  (2)    +~~~~~~~~~~~~~~+
-  |                      ^
-  |                      |
-  `---> [cached (L-1)    | (3)
-         generates B'] --'
-            ]]>
-          </artwork>
-        </figure>
-        <t>
-          In the figure, (1) shows host 'A' engaged in DAD using the address 'B' generated with the iterations count 'L'.
-          After the collision is detected in (2), step (3) shows the new address "B'" being immediately tried using the
-          already-cached value 'L-1' as the input iterations count. The DAD process is then successful and there are no
-          on-link duplicate addresses.
-        </t>
-        <t>
-          To further cement this important optimization procedure, a written example process follows.
-        </t>
-        <ol>
-          <li>A new network host has received Link Voucher details; the voucher specifies using PBKDF2.</li>
-          <li>The host arbitrarily selects 0xFF04 as its input link-local iterations count.</li>
-          <li>The host will iterate the PBKDF2 function through 0xFEFF.</li>
-          <li>When retrieving the PBKDF2 cipher output for 0xFF00 (L - 4) iterations, it will cache this value.</li>
-          <li>It will do the same for the next 3 iterations counts (0xFF01, 0xFF02, &amp; 0xFF03).</li>
-          <li>It will compute the final PBKDF2 round at 0xFF04 iterations, and will use the result to generate
-            a valid VBA <xref target="summary-generate"/>.</li>
-          <li>When following the DAD procedure, a collision is detected.</li>
-          <li>The host then falls immediately back to the L - 1 iterations count of 0xFF03 to generate the VBA.</li>
-          <li>This new host address is completely different and does not register a DAD collision.</li>
-          <li>The optimization has successfully removed the need to recompute the PBKDF2 algorithm up to some new
-            iterations count, saving a significant amount of time in the VBA-enabled SLAAC process. Reducing the
-            chosen 'L' value by 1 results in a completely different pseudo-random address.</li>
-        </ol>
-        <t>
-          If all 5 attempted iterations counts result in DAD collisions, then the node MUST give up and use some other
-          implementation-specific course of action to contact an administrator or log a system management error.
-        </t>
-        <t>
-          Note that truly benign DAD collisions are a dangerous prospect for Voucher-Based Addressing. Address
-          collisions imply that a separate link-layer identifier with the SAME iterations count has somehow
-          generated a hash suffix collision, exposing the possibility for node impersonation in a rare occurrence.
-          Some implementations MAY wish to find trusted ways to detect such an occurrence, possibly by means
-          of intermediate device monitoring (such as switching hardware), and take action based on it.
-        </t>
-        <t>
-          Nodes encountering a duplicate address will by necessity require a different iterations count to
-          generate their current address. If the node uses a 'sticky' iterations count, then it is RECOMMENDED
-          that it send a gratuitous VSR update to the LOVMA with the new count (<xref target="lovma-packets-vsr"/>).
-        </t>
-        <t>
-          Protections to mitigate denial of service attacks based on DAD are beyond the scope of this document.
-          Since VBAs do not modify the actual DAD process, further research into DAD denial of service protections
-          will apply likewise when using VBAs.
-        </t>
       </section>
     </section>
 
