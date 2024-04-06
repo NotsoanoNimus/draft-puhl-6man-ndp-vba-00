@@ -963,101 +963,76 @@ Formulas:
         </t>
 
         <section anchor="behavioral-when">
-          <name>The 'When' of Address Verification</name>
+          <name>The Address Verification Shim</name>
           <t>
-            VBA verification is an expensive process that is ideally performed as seldom as possible, while still
-            providing assurance against on-path attacks. As such, this document mandates that the Address Verification
-            MUST be performed ONLY when updating or creating a Neighbor Cache (NC) entry.
+            The primary goal of VBA verification results in a KDF computation that might be costly for low-power nodes
+            or other embedded systems. By requiring address verification ONLY when interacting with the local Neighbor
+            Cache, nodes do not need to perform the entire computation as frequently for each reported binding. This
+            process is ideally performed as seldom as possible, while still providing assurance against on-path attacks.
+            As such, this document specifies that VBA verification MUST be performed when updating or creating a NC
+            entry.
+          </t>
+          <t>
+            Verification is a 'shim' process that filters incoming requests to cache bindings between IP addresses
+            and LLIDs. If the verification shim rejects a binding from entering the NC, then the verifying node will be
+            denied from properly forwarding data frames to the requesting node. There are a few ND processes for which
+            implementations MUST insert this Address Verification Shim (AVS):
+          </t>
+          <ul>
+            <li>
+              Section 7.2.3 of <xref target="RFC4861"/> specifies that recipients of NS messages with a SLLAO attached
+              SHOULD create or update a NC entry corresponding to the IP Source Address. These SLLAOs MUST be passed through
+              the AVS process with the IP Source Address to determine their legitimacy.
+            </li>
+            <li>
+              <t>
+                Section 7.2.5 of <xref target="RFC4861"/> specifies behaviors for receivers of NA messages. The behavior
+                remains mostly equivalent in this document, but the AVS MUST be used when inserting new NC entries from NAs.
+                Since LLADDRs are bound to IPs and VBA collisions are highly unlikely, new LLADDRs on remote nodes have a
+                significantly low chance of producing the same IP address. Therefore, the Override flag MUST be ignored when
+                the TLLAO indicates a different LLADDR.
+              </t>
+              <t>
+                Implementations MUST NOT allow an Override NA packet to update a cache
+                entry or to produce another expensive AVS query. If the TLLAO is equivalent to the currently-cached value, the
+                record is simply refreshed and no AVS query is required.
+              </t>
+            </li>
+          </ul>
+        </section>
+
+        <section anchor="behavioral-advertisements">
+          <name>Neighbor Unreachability Detection</name>
+          <t>
           </t>
         </section>
 
-        <section anchor="behavioral-cache">
-          <name>Protecting the Neighbor Cache</name>
+        <section anchor="behavioral-expirations">
+          <name>Link Voucher Expirations</name>
           <t>
-            The primary verification goal of VBA verification results in a symmetric computation that can be costly
-            for low-power nodes or other embedded systems. By requiring address verification ONLY when interacting
-            with the local Neighbor Cache, nodes do not need to perform the entire verification procedure as
-            frequently.
+            Any expiration of a current LV used to verify VBAs MUST cause the dynamic NC to be immediately cleared.
+            This could occur for any number of reasons, but the expiration indicates the LV is no longer in active use
+            and therefore any addresses which were previously cached MUST be dropped. Implementations MAY wish to
+            categorize or label NC entries by the LV ID used to verify them as an optimization, so that other NC entries
+            will not be forcibly cleared (such as those from a new LV after a handoff occurs).
           </t>
           <t>
-            This section discusses some behavioral ND changes regarding the host's Neighbor Cache. The changes
-            are aimed at a balanced mixture of optimization and security.
+            Static mappings entered into the NC MUST be preserved regardless of LV expirations.
           </t>
-
-          <section anchor="behavioral-cache-rxns">
-            <name>Receiving Neighbor Solicitations</name>
-            <!-- DO NOT EAGERLY CACHE WITHOUT VERIFYING. -->
-            <t>
-              Section 7.2.3 of <xref target="RFC4861"/> dictates that recipients of NS messages with a SLLAO attached
-              SHOULD create or update a NC entry. 
-            </t>
-          </section>
-
-          <section anchor="behavioral-cache-unsolicitedna">
-            <name>Unsolicited Neighbor Advertisements</name>
-            <!-- Section 7.2.5 of RFC4861. -->
-            <t>
-            </t>
-          </section>
-
-          <section anchor="behavioral-nud">
-            <name>Neighbor Unreachability Detection</name>
-            <t>
-            </t>
-          </section>
-
-          <!-- <section anchor="behavioral-cache-unsolicited">
-            <name>Receiving Unsolicited Traffic Needing No Response</name>
-            <t>
-              Any node receiving unsolicited traffic from a neighbor, for which no response is required from
-              the receiver, such as UDP-based applications, does not need to interact with the VBA system
-              at all. The receiving node MAY choose to validate the sender according to this specification.
-              This would necessitate the ND Address Resolution process be conducted from the receiver for the
-              sender's link-layer address.
-            </t>
-            <t>
-              If the sending neighbor is already in the receiver's neighbor cache, then the receiver SHOULD
-              NOT verify the address of the sender. The cache entry at the receiving side SHOULD NOT be updated
-              unless ND packets are exchanged which indicate that cached address bindings for the peer have not
-              changed.
-            </t>
-            <t>
-              VBA employment primarily supplies privacy-focused address generation and uses neighbor address
-              verification to provide proof of address ownership. The goal is to prevent on-path attackers
-              from illegally, ACTIVELY intercepting local network traffic. Therefore, receiving packets for
-              which no response is necessary does not merit an explicit requirement that the sending neighbor
-              be verified.
-            </t>
-          </section> -->
-
-          <section anchor="behavioral-cache-expirations">
-            <name>Link Voucher Expirations</name>
-            <t>
-              Any expiration of a current LV used to verify VBAs MUST cause the dynamic NC to be immediately cleared.
-              This could occur for any number of reasons, but the expiration indicates the LV is no longer in active use
-              and therefore any addresses which were previously cached MUST be dropped. Implementations MAY wish to
-              categorize or label NC entries by the LV ID used to verify them as an optimization, so that other NC entries
-              will not be forcibly cleared (such as those from a new LV after a handoff occurs).
-            </t>
-            <t>
-              Static mappings entered into the NC MUST be preserved regardless of LV expirations.
-            </t>
-          </section>
         </section>
 
         <section anchor="behavioral-grand">
           <name>Gratuitous Neighbor Discovery</name>
           <t>
             Gratuitious ND <xref target="RFC9131"/> allows routers to create STALE Neighbor Cache entries from received
-            Neighbor Advertisements, as an optimization to expedite the exchange of link-layer address bindings. VBAs
-            SHOULD support this option, as routers preemptively verifying a host's address bindings will allow the host to
-            communicate off-link much faster than if the router required a reverse Address Resolution process for the host.
+            Neighbor Advertisements, as an optimization to expedite the exchange of LLADDR bindings. VBAs SHOULD support this
+            option, as routers preemptively verifying a host's address bindings will allow the host to communicate off-link
+            much faster than if the router required a reverse AR process for the host.
           </t>
           <t>
             Implementations SHOULD be flexible with Gratuitious ND as it applies to IEMs requiring address verification. If
             a flurry of NA packets is received in an ostensible attack, the router might quickly find itself with too much
-            work and could start dropping packets. Therefore, implementations MAY want to toggle this feature reactively and
-            dynamically.
+            work and could start dropping packets. Therefore, implementations MAY toggle enablement of this feature reactively.
           </t>
         </section>
 
@@ -2149,20 +2124,6 @@ COMPUTE & CACHE:
         had adequate exploration in the rest of this document.
       </t>
 
-      <section anchor="security-binding">
-        <!-- From SEND:
-            SEND does not compensate for an unsecured link layer.  For instance,
-            there is no assurance that payload packets actually come from the
-            same peer against which the NDP was run.
-            Likewise, VBAs rely on the principle that link-lyer addresses MUST be unique on the same broadcast medium.
-            VBAs offer great protection for unsecured L2 setups, but link-layer security would help to remediate further concerns.
-        -->
-        <name>Privacy of Link-Layer Bindings</name>
-        <t>
-          <!-- TODO -->
-        </t>
-      </section>
-
       <section anchor="security-usurp">
         <name>Hijacking or Desynchronizing Link Vouchers</name>
         <!-- Discuss de-sync in LV state as well: nodes in certain IEMs will NOT be able to communicate -->
@@ -2235,78 +2196,45 @@ COMPUTE & CACHE:
         </t>
       </section>
 
-      <section anchor="security-pki">
-        <name>Certifying Link Vouchers</name>
-        <t>
-          Link Vouchers are susceptible to impersonation despite the use of asymmetric cryptography in signing their
-          details. Once a host becomes aware of a valid public-key and signature, it becomes "locked" to this key and
-          will not accept LVs from senders NOT using it in their signatures (unless the current LV expires or a VHA is
-          issued). However, the initial exchange -- or first-contact -- between a VB and a neighbor is still vulnerable.
-          This is because any malicious node on-link could craft a public key for its own LV and advertise it, if the
-          node is not first blocked by infrastructure-based solutions like RA-Guard.
-        </t>
-        <t>
-          Section 6 of <xref target="RFC3971"/> dictates the use of Public Key Infrastructure to ensure communication
-          is genuine between hosts and routers, and that each router is authorized to provide router information. Trust
-          anchors are used to determine whether a certificate presented by a router validates its role in SEND: if the
-          router presents a certificate that is trusted by the anchor, then on-link hosts sharing the same trust anchor
-          must consider it as legitimate. The same validation of certification paths can also be used to verify RSA
-          Signature options between on-link hosts.
-        </t>
-        <t>
-          Establishing certification paths that validate SEND traffic is done through the use of two new ICMP messages:
-        </t>
-        <ul spacing="compact">
-          <li>Certification Path Solicitation (ICMP type 148). Solicits routers with a set of trust anchors and expects
-            an advertisement including certificates authorized by one or more of the trust anchors.</li>
-          <li>Certification Path Advertisement (ICMP type 149). Routers use these to respond to valid solicitations
-            indicating the need for one or more certificate(s) from a set of specified Trust Anchor options.</li>
-        </ul>
-        <t>
-          Future additions to this specification MAY invoke these ICMP options to integrate with public-key signatures
-          appearing on Link Vouchers. This might include amendments to the ND Link Voucher option which would extend the
-          field by some extra length to convey trust anchor or certification path information. Similar amendments might
-          just consider adding trust anchor or certification path information to LVs and letting each neighbor use their
-          own certificate stores to validate them.
-        </t>
-        <t>
-          While this proposal seeks to AVOID the complexities introduced by certificates and trust anchors, this same
-          supporting infrastructure might be crucial for first-contact trust assurance where RA-Guard or similar mechanisms
-          cannot be used to protect the link from malicious VBs. This is probably a much more performant use of certification
-          paths than SEND, simply because the trust of a public key only needs to be verified ONCE at each receiver when an
-          initial LV, or LV handoff, is received and stored.
-        </t>
-        <t>
-          Such an amendment to LV options is beyond the scope of this document. It is suggested as a possible future endeavor
-          that could make VBAs a more secure, isolated, and end-to-end solution, instead of a specification which relies on
-          first-come-first-serve trust.
-        </t>
-      </section>
-
       <section anchor="security-dos">
         <name>Denial of Service</name>
         <t>
-          This brief section discusses concerns about potential denial of service attack vectors when
-          employing VBAs. Solutions may or may not be provided along with each section.
+          This document is primarily tasked to counter on-path attacks in local networks. Mitigation of NDP denial of service
+          attacks is therefore an auxiliary goal that could be achieved by applying other protocols. Placing the burden of
+          resolving these problems onto this specification could reduce its flexibility and applicability by forcing it to
+          apply these mitigation strategies, rather than leaving them as optional.
+        </t>
+        <t>
+          This brief section discusses concerns about potential denial of service attack vectors when employing VBAs. When a
+          topic is presented without a solution, it is STRONGLY IMPLIED that the implementation of this protocol SHOULD find
+          another way to mitigate the problem, or at least maintain an awareness of the weakness during development.
         </t>
 
         <section anchor="security-dos-ns-floods">
           <name>Neighbor Solicitation Flooding</name>
           <t>
-            Section 4.3.2 of <xref target="RFC3756"/> outlines an attack targeting last-hop routers that inundates the network
-            with traffic destined to on-link hosts that do not exist. VBAs do not suffer from this attack vector, as there is
-            no extra cost incurred in creating Neighbor Solicitation packets. Mitigations of this attack are therefore left to
-            other applied techniques proposed elsewhere.
+            Section 4.3.2 of <xref target="RFC3756"/> outlines an attack targeting last-hop routers that inundates a network
+            with traffic destined to on-link hosts which do not exist. VBAs do not suffer from this attack vector or from any
+            situation involving creation of repeated NS packets, as there is no extra cost incurred in creating them.
+          </t>
+          <t>
+            When a VBA-enabled node is receiving a flood of NS packets rather than sending them, particularly if the NS
+            packets contain spoofed SLLAOs, then the node may be forced to compute a large volume of verifications in a short
+            interval. This could easily lead to resource exhaustion if the LV parameters specify a more difficult set of KDF
+            parameters. This document does not provide a mitigation for this type of attack, as it is primarily concerned with
+            verifying purported address bindings according to the standard ND behavior.
           </t>
         </section>
 
         <section anchor="security-dos-na-floods">
           <name>Neighbor Advertisement Flooding</name>
+          <!-- WRONG WRONG - VBAs DO accept unsol NA -->
           <t>
-            Neighbor Advertisement floods, either with (1) randomized addresses and Target Link Layer Address options or (2) 
-            randomized Target Link-Layer Address options for a known address, will NOT affect VBAs and the address verification
-            process for enforcing interfaces. This is because VBA NC behavior dictates that all unsolicited NAs be ignored, outside
-            of optional support for Gratuitious ND <xref target="RFC9131"/>. NA flooding is therefore not a topic of concern.
+            Neighbor Advertisement floods, either with (1) randomized target addresses and Target Link Layer Address options
+            or (2) randomized Target Link-Layer Address options for a known target address, will not affect VBAs and the address
+            verification process for enforcing interfaces. This is because VBA NC behavior mandates that all unsolicited NAs MUST
+            be ignored beyond a certain window of time for a target address, outside of optional support for Gratuitious ND
+            <xref target="RFC9131"/>. NA flooding in a randomly-timed manner is therefore not a concern for VBAs.
           </t>
         </section>
 
@@ -2314,13 +2242,22 @@ COMPUTE & CACHE:
           <name>Spoofed, High-Iteration Connection Flooding</name>
           <t>
             A malicious node may initiate a series of sessions from bogus IP addresses that demand return traffic at higher layers
-            of the network stack, such as TCP SYN floods. This would necessitate that the attack target perform a reverse Address
-            Resolution to determine the link-layer address of the supposed initiating IP.
+            of the network stack, such as TCP SYN floods. This would necessitate that the attack target engages in the NDAR process
+            to determine the LLID of the supposed initiating IP. If the initiating IP uses a high IC value embedded within its VBA,
+            the following verification process could quickly exhaust the resources on the target.
           </t>
-          <!-- TODO: moar -->
         </section>
 
-        <!-- TODO: Add more sections. -->
+        <section anchor="security-dos-overrotate">
+          <name>Over-rotation of Link Vouchers</name>
+          <t>
+            Large local networks might have thousands of devices on the same logical link using NDP to resolve each others' LLIDs
+            from IP addresses. When a network is of this size and the LV is handed off to another through the election process,
+            optimizations for low-power nodes could get excessively costly when attempting to pre-generate anticipated VBAs according
+            to the new LV parameters. To reduce this burden, implementations MAY choose to either limit their optimizations at a
+            certain cache size or pre-generate VBAs only for the most recently contacted, high-traffic nodes on the link. 
+          </t>
+        </section>
       </section>
 
       <section anchor="security-fairness">
@@ -2337,69 +2274,6 @@ COMPUTE & CACHE:
           parameters in the Link Voucher SHOULD always tend toward being more forgiving for low-power or
           embedded systems. The balance of low compute latencies with high security might be difficult to
           determine, but implementations SHOULD attmept to discover and apply defaults that achieve this goal.
-        </t>
-      </section>
-
-      <section anchor="security-proxies">
-        <!-- See RFCs 4389 & 5909 -->
-        <name>Neighbor Discovery Proxies</name>
-        <t>
-        </t>
-      </section>
-
-      <section anchor="security-sessions">
-        <name>Integrating Neighbor Discovery Sessions</name>
-        <t>
-          As noted in <xref target="summary-overview-adversaries-kill"/>, VBAs are vulnerable to Identity Assumption
-          attacks where an active link-layer-address-to-IP binding could be hijacked by malicious hosts. This is
-          accomplished by denying connectivity to the legitimate host owning a link-layer address, then assuming its
-          link-layer address in its absence. The malicious host can then intercept all frames destined for the original
-          node WITHOUT needing to perform a classic traffic redirection attack.
-        </t>
-        <t>
-          Networks using SEND can also experience Identity Assumption attacks, but only in the short-term because SEND
-          relies on CGAs <xref target="RFC3972"/> to enforce knowledge of a private cryptographic key in ND messages. SEND
-          itself declares this problem in Section 9.1 <xref target="RFC3971"/>.
-          When a new request for ND arrives -- such as during the NUD process -- impersonating nodes will not be able to sign
-          ND responses because they do not know the original private key. These concerns are more considerable for VBAs than
-          SEND for this very reason: VBAs do NOT require knowledge of some private value that is publicly verifiable.
-        </t>
-        <t>
-          ND Session options <!-- ref --> are used to exchange session details using Zero-Knowledge
-          Password Proof (ZKPP) techniques. These options do not interfere with the VBA verification process between two
-          nodes, and act to further bolster confidence in neighbor verification over a long-term session. ZKPP allows a
-          node to express knowledge of a particular password without exposing the password itself; this typically happens
-          through a clever hashing mechanism known as 'reverse hash chain revealing'.
-        </t>
-        <t>
-          An ND Session is a long-term exchange bound to one single instance of Address Resolution between a set of link-layer
-          addresses and IP addresses. Changing any of those four variables will necessitate a new Session be formed. A per-session,
-          random password is chosen on each session node, whose hash value is repeatedly iterated with a salt value consisting of
-          session variables and then given to the session peer. Nodes can prove knowledge of their initial passwords in each ND
-          message by slowly revealing each one-time-use 'ancestor' hash in the iteration chain, going back to the Root Hash. See
-          the specification <!-- ref --> for more information about its inner workings.
-        </t>
-        <t>
-          ZKPP-based sessions therefore provide strong protection against Identity Assumption attacks occurring in the middle
-          of a communication between two neighbors. They are still susceptible to impersonations at the very start of the ND
-          Session, but this would require a very opportunistic and reactive attacker, since Sessions can last up to days at a time
-          without any update. Implementing ND Session options with VBAs, then, simply shims the ND Address Resolution process with
-          Session options. Such implementations SHOULD always validate the underlying session BEFORE processing any VBA verifications.
-        </t>
-        <t>
-          To summarize, ND Sessions reassure two communicating neighbors of each others' persistent identities; on-path attackers
-          will not be able to provide ZKPP. Similarly, VBAs provide the link-layer-address-to-IP binding which enforces Address
-          Resolutions always return the correct link-layer addresses for target IPs.
-          ND Sessions MAY be integrated with VBAs, but are not a requirement and in practice will almost certainly add both
-          extra complication and extra latency to ND Address Resolution exchanges. These are again considered a trade-off
-          for allowing ND verifications to be end-to-end, instead of something requiring complex implementations or network
-          infrastructure to be deployed.
-        </t>
-      </section>
-
-      <section anchor="security-dhcp">
-        <name>Deployments using DHCP</name>
-        <t>
         </t>
       </section>
 
@@ -2581,6 +2455,140 @@ COMPUTE & CACHE:
           </tr>
         </tbody>
       </table>
+    </section>
+
+    <section anchor="future">
+      <name>Future Work</name>
+      <t>
+        This section provides an overview of adjacent topics that might be explored in future work related to
+        this document.
+      </t>
+
+      <section anchor="security-dhcp">
+        <name>Deployments using DHCP</name>
+        <t>
+          DHCP is not mentioned elsewhere in this document because VBAs are designed primarily for SLAAC-based environments.
+          However, future work might wish to add features into DHCP servers that support VBAs, using something like DHCP
+          Snooping to ensure only legitimate servers are giving out addresses. Because of its centrality and responsibility,
+          a DHCP server would also function well as the link VB if the link router does not support this specification.
+        </t>
+        <t>
+          One notable change of generating VBAs on the server-side is the ability for client nodes to self-determine an
+          interations count value dynamically is no longer available. Allowing nodes to choose their own ICs affords them
+          the ability to (1) randomize the value according to their own implementation and (2) preserve a Preferred IC (see
+          <xref target="lovma-packets-vsr"/> about VSRs).
+        </t>
+        <t>
+          In a future proposal, DHCP client options might be amended to allow a client to request a certain 'security level'
+          or IC dynamically. Such an option could also present an opportunity to exchange other information about client
+          preferences or other important VBA details.
+        </t>
+      </section>
+
+      <section anchor="security-proxies">
+        <!-- See RFCs 4389 & 5909 -->
+        <name>Neighbor Discovery Proxies</name>
+        <t>
+        </t>
+      </section>
+
+      <section anchor="security-pki">
+        <name>Certifying Link Vouchers</name>
+        <t>
+          Link Vouchers are susceptible to impersonation despite the use of asymmetric cryptography in signing their
+          details. Once a host becomes aware of a valid public-key and signature, it becomes "locked" to this key and
+          will not accept LVs from senders NOT using it in their signatures (unless the current LV expires or a VHA is
+          issued). However, the initial exchange -- or first-contact -- between a VB and a neighbor is still vulnerable.
+          This is because any malicious node on-link could craft a public key for its own LV and advertise it, if the
+          node is not first blocked by infrastructure-based solutions like RA-Guard.
+        </t>
+        <t>
+          Section 6 of <xref target="RFC3971"/> dictates the use of Public Key Infrastructure to ensure communication
+          is genuine between hosts and routers, and that each router is authorized to provide router information. Trust
+          anchors are used to determine whether a certificate presented by a router validates its role in SEND: if the
+          router presents a certificate that is trusted by the anchor, then on-link hosts sharing the same trust anchor
+          must consider it as legitimate. The same validation of certification paths can also be used to verify RSA
+          Signature options between on-link hosts.
+        </t>
+        <t>
+          Establishing certification paths that validate SEND traffic is done through the use of two new ICMP messages:
+        </t>
+        <ul spacing="compact">
+          <li>Certification Path Solicitation (ICMP type 148). Solicits routers with a set of trust anchors and expects
+            an advertisement including certificates authorized by one or more of the trust anchors.</li>
+          <li>Certification Path Advertisement (ICMP type 149). Routers use these to respond to valid solicitations
+            indicating the need for one or more certificate(s) from a set of specified Trust Anchor options.</li>
+        </ul>
+        <t>
+          Future additions to this specification MAY invoke these ICMP options to integrate with public-key signatures
+          appearing on Link Vouchers. This might include amendments to the ND Link Voucher option which would extend the
+          field by some extra length to convey trust anchor or certification path information. Similar amendments might
+          just consider adding trust anchor or certification path information to LVs and letting each neighbor use their
+          own certificate stores to validate them.
+        </t>
+        <t>
+          While this proposal seeks to AVOID the complexities introduced by certificates and trust anchors, this same
+          supporting infrastructure might be crucial for first-contact trust assurance where RA-Guard or similar mechanisms
+          cannot be used to protect the link from malicious VBs. This is probably a much more performant use of certification
+          paths than SEND, simply because the trust of a public key only needs to be verified ONCE at each receiver when an
+          initial LV, or LV handoff, is received and stored.
+        </t>
+        <t>
+          Such an amendment to LV options is beyond the scope of this document. It is suggested as a possible future endeavor
+          that could make VBAs a more secure, isolated, and end-to-end solution, instead of a specification which relies on
+          first-come-first-serve trust.
+        </t>
+      </section>
+
+      <section anchor="security-sessions">
+        <name>Integrating Neighbor Discovery Sessions</name>
+        <t>
+          As noted in <xref target="summary-overview-adversaries-kill"/>, VBAs are vulnerable to Identity Assumption
+          attacks where an active link-layer-address-to-IP binding could be hijacked by malicious hosts. This is
+          accomplished by denying connectivity to the legitimate host owning a link-layer address, then assuming its
+          link-layer address in its absence. The malicious host can then intercept all frames destined for the original
+          node WITHOUT needing to perform a classic traffic redirection attack.
+        </t>
+        <t>
+          Networks using SEND can also experience Identity Assumption attacks, but only in the short-term because SEND
+          relies on CGAs <xref target="RFC3972"/> to enforce knowledge of a private cryptographic key in ND messages. SEND
+          itself declares this problem in Section 9.1 <xref target="RFC3971"/>.
+          When a new request for ND arrives -- such as during the NUD process -- impersonating nodes will not be able to sign
+          ND responses because they do not know the original private key. These concerns are more considerable for VBAs than
+          SEND for this very reason: VBAs do NOT require knowledge of some private value that is publicly verifiable.
+        </t>
+        <t>
+          ND Session options <!-- ref --> are used to exchange session details using Zero-Knowledge
+          Password Proof (ZKPP) techniques. These options do not interfere with the VBA verification process between two
+          nodes, and act to further bolster confidence in neighbor verification over a long-term session. ZKPP allows a
+          node to express knowledge of a particular password without exposing the password itself; this typically happens
+          through a clever hashing mechanism known as 'reverse hash chain revealing'.
+        </t>
+        <t>
+          An ND Session is a long-term exchange bound to one single instance of Address Resolution between a set of link-layer
+          addresses and IP addresses. Changing any of those four variables will necessitate a new Session be formed. A per-session,
+          random password is chosen on each session node, whose hash value is repeatedly iterated with a salt value consisting of
+          session variables and then given to the session peer. Nodes can prove knowledge of their initial passwords in each ND
+          message by slowly revealing each one-time-use 'ancestor' hash in the iteration chain, going back to the Root Hash. See
+          the specification <!-- ref --> for more information about its inner workings.
+        </t>
+        <t>
+          ZKPP-based sessions therefore provide strong protection against Identity Assumption attacks occurring in the middle
+          of a communication between two neighbors. They are still susceptible to impersonations at the very start of the ND
+          Session, but this would require a very opportunistic and reactive attacker, since Sessions can last up to days at a time
+          without any update. Implementing ND Session options with VBAs, then, simply shims the ND Address Resolution process with
+          Session options. Such implementations SHOULD always validate the underlying session BEFORE processing any VBA verifications.
+        </t>
+        <t>
+          To summarize, ND Sessions reassure two communicating neighbors of each others' persistent identities; on-path attackers
+          will not be able to provide ZKPP. Similarly, VBAs provide the link-layer-address-to-IP binding which enforces Address
+          Resolutions always return the correct link-layer addresses for target IPs.
+          ND Sessions MAY be integrated with VBAs, but are not a requirement and in practice will almost certainly add both
+          extra complication and extra latency to ND Address Resolution exchanges. These are again considered a trade-off
+          for allowing ND verifications to be end-to-end, instead of something requiring complex implementations or network
+          infrastructure to be deployed.
+        </t>
+      </section>
     </section>
   </middle>
 
