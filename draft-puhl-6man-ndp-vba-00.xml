@@ -1429,6 +1429,11 @@ COMPUTE & CACHE:
                       format. This value MUST be greater than 0; receivers of 0 values MUST use 1 instead. This factor can be
                       used by a Link Voucher to automatically scale the 'difficulty' of the PBKDF2 KDF on the network.
                     </dd>
+                    <dt>Padding</dt>
+                    <dd>
+                      16 bits (2 octets) of padding initialized to zero. Senders MUST set this to 0. Receivers MUST
+                      ignore this padding.
+                    </dd>
                   </dl>
                 </dd>
               </dl>
@@ -1438,8 +1443,7 @@ COMPUTE & CACHE:
               <t>
                 The Argon2 algorithm is specified in Section 3 of <xref target="RFC9106"/>. It is a Memory-bound cryptographic
                 function which will ideally provide less disparate address computation speeds than CPU-bound algorithms like
-                PBKDF2. Implementations SHOULD always prefer to use this Type over others, provided all participating network
-                devices have Argon2 support.
+                PBKDF2.
               </t>
               <t>
                 This specification explicitly opts to use Argon2d instead of Argon2i or Argon2id because the generation of
@@ -1449,35 +1453,33 @@ COMPUTE & CACHE:
               <t>
                 The iterations count 'L' value is used as the 't' input for Argon2d computations. The Argon2 't' parameter
                 indicates the number of passes and is used to increase the algorithm's running time regardless of MemorySize.
+                To give the LV parameters in the Value field more weight, 't' MUST always be calculated from the input 'L' value
+                as follows:
               </t>
+              <t><tt>t := (L &gt;&gt; 8) + 1</tt></t>
               <t>
                 The Argon2 parameters for Secret Value 'K' and Associated Data 'X' MUST NOT be used or distributed by the LV.
                 The Tag Length 'T' for Argon2d MUST be set to 32 and MUST NOT be changed.
               </t>
               <dl newline="true" spacing="compact">
                 <dt>Type</dt><dd>10</dd>
-                <dt>Length</dt><dd>3</dd>
+                <dt>Length</dt><dd>2</dd>
                 <dt>Value</dt>
                 <dd>
                   <dl newline="true" spacing="compact">
                     <dt>Parallelism</dt>
                     <dd>
-                      A 24-bit integer determining how many degrees of parallelism (lanes) are allowed to run during KDF
+                      An 8-bit integer determining how many degrees of parallelism (lanes) are allowed to run during KDF
                       computation. This value SHALL NOT be set to 0. Receivers MUST consider Parallelism values of 0 to
                       automatically indicate a Parallelism of 1.
                     </dd>
-                    <dt>Padding</dt>
-                    <dd>
-                      8 bits (one octet) of padding initialized to zero. Senders MUST set this to 0. Receivers MUST ignore
-                      this padding.
-                    </dd>
                     <dt>MemorySize</dt>
                     <dd>
-                      A 32-bit integer representing the number of kibibytes used in the KDF computation. This value SHOULD be
-                      carefully controlled and take into consideration the computing resources across the link on which the LV
-                      will be distributed. This value MUST be a minimum of 8*Parallelism and MUST NOT be set to 0. Receivers MUST
-                      adjust the minimum MemorySize accordingly if the value does not meet the minimum threshold for the ACTUAL
-                      degree of parallelism being used.
+                      A 24-bit integer representing the number of kibibytes used in the KDF computation. This value SHOULD be
+                      carefully controlled and take into consideration the computing resources across the network on which the LV
+                      will be distributed. This value MUST be a minimum of <tt>8 &times; Parallelism</tt> and MUST NOT be set to 0.
+                      Receivers MUST adjust the minimum MemorySize accordingly if the value does not meet the minimum threshold for
+                      the ACTUAL degree of Parallelism being used.
                     </dd>
                   </dl>
                 </dd>
@@ -1488,7 +1490,8 @@ COMPUTE & CACHE:
               <t>
                 The Scrypt KDF algorithm is specified in Section 6 of <xref target="RFC7914"/>. It is a Memory-bound cryptographic
                 function which, similar to Argon2, ideally providing less disparate address computation durations than CPU-bound
-                key derivation techniques.
+                key derivation techniques. Implementations SHOULD always prefer to use this Type over others, provided all
+                participating network devices have Scrypt support.
               </t>
               <t>
                 The iterations count 'L' value is used in part for both the 'N' and 'r' inputs for Scrypt computations. The Scrypt
@@ -1496,8 +1499,8 @@ COMPUTE & CACHE:
                 The 'r' Scrypt parameter indicates the desired block size. Actual values are computed by the following conversion:
               </t>
               <t>
-                r (Parallelism) := MAX{ 16, (L &amp; 0xFF00) &gt;&gt; 4 }<br />
-                N (Cost) := MAX{ 2, 1 &lt;&lt; (L &amp; 0x00FF) }
+                <tt>r (Parallelism) := MAX{ 16, (L &amp; 0xFF00) &gt;&gt; 4 } &lt;&lt; SCALING_FACTOR</tt><br />
+                <tt>N (Cost) := MAX{ 2, 1 &lt;&lt; (L &amp; 0x00FF) } &lt;&lt; SCALING_FACTOR</tt>
               </t>
               <t>
                 The Scrypt parameter 'dkLen' (derived key length) MUST always be set to 32 and MUST NOT differ between
@@ -1506,12 +1509,28 @@ COMPUTE & CACHE:
               </t>
               <dl newline="true" spacing="compact">
                 <dt>Type</dt><dd>20</dd>
-                <dt>Length</dt><dd>1</dd>
+                <dt>Length</dt><dd>2</dd>
                 <dt>Value</dt>
-                <dd>There are no extra parameters to control for the Scrypt Algorithm Type option.</dd>
+                <dd>
+                  <dl newline="true" spacing="compact">
+                    <dt>SCALING_FACTOR</dt>
+                    <dd>
+                      An 8-bit integer setting the "difficulty" of the Scrypt algorithm. This value MUST only be 0 through 5 inclusive.
+                      Receivers adjust the maximum SCALING_FACTOR to 5 if the value of this field is greater than 5.
+                    </dd>
+                    <dt>Padding</dt>
+                    <dd>
+                      24 bits (3 octets) of padding initialized to zero. Senders MUST set this to 0. Receivers MUST
+                      ignore this padding.
+                    </dd>
+                  </dl>
+                </dd>
               </dl>
             </dd>
           </dl>
+          <t>
+            A cursory exploration of KDF speeds in the address generation process can be found in <xref target="appendix-speed"/>.
+          </t>
         </section>
       </section>
 
@@ -2142,10 +2161,6 @@ COMPUTE & CACHE:
         <t>
           <!-- TODO -->
         </t>
-        <t>
-          The Appendix of this document contains a detailed statistical evaluation of address randomness;
-          see <xref target="appendix-randomness"/>.
-        </t>
       </section>
 
       <section anchor="security-usurp">
@@ -2638,99 +2653,277 @@ COMPUTE & CACHE:
       </references> -->
     </references>
 
-    <section anchor="appendix-speed">
-      <name>Testing Address Generation Speeds</name>
-      <t>
-      </t>
-    </section>
-
-    <section anchor="appendix-randomness">
-      <name>Validating Address Randomness</name>
-      <t>
-        This section evaluates the statistical randomness of generated VBAs on the basis of a few
-        noted conditions. All results were acquired through use of the Dieharder suite of PRNG tests
-        <!-- ref -->.
-      </t>
-      <t>
-        Each test procedurally selects starting values and iterates the "PBKDF2 with SHA-256" KDF with a static
-        multiplier of 256. The 'variable' condition will then be mutated pseudo-randomly each time all 2<sup>16</sup> possible
-        iterations counts have been calculated with the KDF.
-      </t>
-      <t>
-        Each test simulates 2<sup>16</sup> variations, for a total of 2<sup>32</sup> outputs (2<sup>16</sup> variations &times; 2<sup>16</sup> iterations per
-        variation). VBA address generation procedures calculating these inputs write to a test file that records the
-        address SUFFIXES as 64-bit decimal integers. That test file is then ultimately fed to Dieharder to run PRNG
-        tests and thus generate these results.
-      </t>
-
-      <section>
-        <name>Variable MAC, Fixed Seed, Fixed Subnet (VFF)</name>
-        <t>
-          Per every set of 2<sup>16</sup> iterations counts, the input link-layer address (MAC in this case) is set to a new
-          pseudo-random value. This test shows the random distribution of VBAs on a single subnet with an unchanging
-          Link Voucher seed value, among neighbors with unique MAC addresses.
-        </t>
-        <t>
-          This test shows the randomness of address derivations between on-link neighbors.
-        </t>
-        <t>
-          Fixed LV Seed Value: 0x5DD55190_0FA2A986_D3DAB5D2_94B97B63<br />
-          Fixed Subnet Prefix: 2001:DB8:C001:5EED
-        </t>
-        <!-- TODO: Data -->
-      </section>
-
-      <section>
-        <name>Fixed MAC, Variable Seed, Fixed Subnet (FVF)</name>
-        <t>
-          Per every set of 2<sup>16</sup> iterations counts, the input Link Voucher Seed is set to a new pseudo-random value.
-          This test shows the random distribution of VBAs from a single node on a single subnet with a mutating seed.
-        </t>
-        <t>
-          This test shows the randomness of address derivations between seeds for the same node on the same subnet.
-        </t>
-        <t>
-          Fixed MAC address: FF-1B-83-8B-BC-C0<br />
-          Fixed Subnet Prefix: FE80::
-        </t>
-        <!-- TODO: Data -->
-      </section>
-
-      <section>
-        <name>Fixed MAC, Fixed Seed, Variable Subnet (FFV)</name>
-        <t>
-          Per every set of 2<sup>16</sup> iterations counts, the input subnet PREFIX is mutated to a new pseudo-random value.
-          This test shows the random distribution of VBAs from a single node on multiple varying subnet prefixes, with
-          a fixed seed value.
-        </t>
-        <t>
-          This test shows the randomness of address derivations for the same node on different subnets, using the same
-          Link Voucher seed.
-        </t>
-        <t>
-          Fixed MAC address: 6A-1E-56-45-E6-BA<br />
-          Fixed LV Seed Value: 0x61E1B40E_3DB48225_5A03DCB5_33068708
-        </t>
-        <!-- TODO: Data -->
-      </section>
-    </section>
-
     <section anchor="appendix-code">
       <name>Code Snippets</name>
       <t>
-        This section contains various code snippets related to VBAs. All code is written in C and does not depend
-        on any external libraries outside of the standard library.
+        This section contains various code snippets used to provide example implementations of certain
+        features specified in this document. All code is written in C, and some external dependencies,
+        such as Argon and Scrypt development libraries, are assumed as being present on the compiling
+        machine.
       </t>
 
       <section anchor="appendix-code-generation">
         <name>Address Generation Sample</name>
-        <t>
-        </t>
+        <figure>
+          <name>Sample Address Generation Code in C</name>
+          <sourcecode type="c" markers="false" name="vbaGeneration.c">
+            <![CDATA[
+uint64_t compute_address_suffix(link_voucher_t *lv,
+                                uint8_t *mac_address,
+                                uint16_t iterations)
+{
+    /*
+     * Initialize a storage buffer for the resulting hash.
+     *   All hashes will be requested at 32 bytes in length,
+     *   despite the algorithm only using the leading 64 bits.
+     */
+    size_t res_buffer_size = 32;
+    uint8_t res_buffer[32] = {0};
+
+    /*
+     * The 'password' is always the 128-bit voucher seed. The salt
+     *   is a combination of a LLADDR (MAC in this case) + 'vba'
+     *   + the 64-bit subnet prefix (or left-most 64 bits of the
+     *   unicast address that will be built). This example uses
+     *   "fe80::" for the subnet prefix.
+     *   All values are big-endian (network byte order).
+     */
+    uint8_t salt[VOUCHER_SALT_LENGTH_MAC] = {
+            /* MAC (6 bytes) */
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            /* Static 'vba' (3 bytes) */
+            'v', 'b', 'a',
+            /* Subnet prefix (8 bytes */
+            0xFE, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    };
+    memcpy(&salt[0], &mac_address[0], 6);
+    /* memcpy(&salt[9], &subnet_prefix[0], 8); */
+
+    /* In this case, the 'algo' member is a union. */
+    switch (lv->algo->type) {
+        case PBKDF2:
+            PKCS5_PBKDF2_HMAC(lv->seed,
+                              VOUCHER_SEED_LENGTH,
+                              salt,
+                              VOUCHER_SALT_LENGTH_MAC,
+                              iterations * lv->algo->pbkdf2_factor,
+                              EVP_sha256(),
+                              res_buffer_size,
+                              res_buffer);
+            break;
+        case ARGON2:
+            argon2d_hash_raw((iterations >> 8) + 1,
+                             lv->algo->argon_mem_size,
+                             lv->algo->argon_parallelism,
+                             lv->seed,
+                             VOUCHER_SEED_LENGTH,
+                             salt,
+                             VOUCHER_SALT_LENGTH_MAC,
+                             res_buffer,
+                             res_buffer_size);
+            break;
+        case SCRYPT:
+            /* https://www.tarsnap.com/scrypt.html */
+            libscrypt_scrypt(lv->seed,
+                             VOUCHER_SEED_LENGTH,
+                             salt,
+                             VOUCHER_SALT_LENGTH_MAC,
+                             max(1 << (iterations & 0x00FF), 2)
+                                 << lv->algo->scrypt_scaling, /* N */
+                             max((iterations & 0xFF00) >> 4, 16)
+                                 << lv->algo->scrypt_scaling, /* r */
+                             SCRYPT_PARALLELIZATION,   /* p */
+                             res_buffer,
+                             res_buffer_size);
+            break;
+        default:
+            fprintf(stderr, "Unknown algorithm type.\n");
+            return -1;
+    }
+
+    /* Always use the first 64 bits of the resulting hash. */
+    uint64_t hash_H = *((uint64_t *)&res_buffer[0]);
+
+    /* Get the first two bytes of the current Link Voucher seed. */
+    uint16_t first_seed_hextet = *((uint16_t *)&lv->seed[0]);
+    
+    /* Compute the 'Z' value and overwrite the first
+        hextet of hash 'H' with it to form SUFFIX. */
+    return ((uint64_t)~(iterations ^ first_seed_hextet) << 48)
+             | (0x0000FFFFFFFFFFFF & hash_H);
+}
+            ]]>
+          </sourcecode>
+        </figure>
       </section>
 
       <section anchor="appendix-code-verification">
         <name>Address Verification Sample</name>
         <t>
+          This snippet references methods from the Address Generation code in the above section.
+        </t>
+        <figure>
+          <name>Sample Address Verification Code in C</name>
+          <sourcecode type="c" markers="false" name="vbaVerification.c">
+            <![CDATA[
+bool verify_address_suffix(uint64_t suffix,
+                           link_voucher_t *lv,
+                           uint8_t* mac_address)
+{
+    /* First extract the 'L' value from 'Z' in the input SUFFIX. */
+    uint16_t first_seed_hextet = *((uint16_t *)&lv->seed[0]);
+    uint16_t iterations =
+        (uint16_t)((~(suffix ^ first_seed_hextet) >> 48) & 0xFFFF);
+
+    /* Now independently compute SUFFIX like the generator does. */
+    uint64_t computed_suffix = compute_address_suffix(lv,
+                                                      mac_address,
+                                                      iterations);
+
+    /* If the independent calculation yields the same suffix as the
+        input, then the binding for this LV is legitimate. */
+    return computed_suffix == suffix;
+}
+            ]]>
+          </sourcecode>
+        </figure>
+      </section>
+    </section>
+
+    <section anchor="appendix-speed">
+      <name>Testing Address Generation Speeds</name>
+      <t>
+        Three tables below the performance statistics of VBA generation across the three different KDFs supplied in this document.
+        All tables show the mean values of address generation times across three different mid-tier devices (each having a GPU available).
+      </t>
+      <t>
+        The runtime parameters of each VBA KDF were set at HIGH DIFFICULTIES for these tests. They were as follows:
+      </t>
+      <ul>
+        <li><tt>PBKDF2_SHA256</tt>: an <tt>ITERATIONS_FACTOR</tt> of 256.</li>
+        <li><tt>Argon2d</tt>: a <tt>MemorySize</tt> of 2,048 and a <tt>Parallelism</tt> of 32.</li>
+        <li><tt>Scrypt</tt>: a <tt>SCALING_FACTOR</tt> of 5 (the maximum value permitted).</li>
+      </ul>
+      <t>
+        The results in this section show that increasing the iterations count 'L' results in a somewhat linear order of increasing
+        difficulty, except the Scrypt algorithm, which seems to flatten and taper toward the upper iterations range. Assumptions
+        can be made of expected computation times relative to iterations counts, scaled up or down to certain difficulty levels.
+      </t>
+      <t>
+        NOTE: these three table ARE NOT related to one another, nor should they be read comparatively -- parameters were
+        chosen arbitrarily from an upper difficulty range for each KDF to evaluate their performance on mid-tier hardware.
+        Address verification uses the same results because its process is synonymous to generation, so this benchmarking
+        process is NOT repeated for VBA verification in this document.
+      </t>
+
+      <section anchor="appendix-speed-pbkdf2">
+        <name>PBKDF2_SHA256</name>
+        <table anchor="speed-pbkdf2">
+          <name>Speed of Demanding PBKDF2_SHA256 Address Generation</name>
+          <thead>
+            <tr>
+              <th>Iterations 'L'</th>
+              <th>Time (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>8,192</td><td>477</td></tr>
+            <tr><td>16,384</td><td>956</td></tr>
+            <tr><td>24,576</td><td>1,462</td></tr>
+            <tr><td>32,768</td><td>2,026</td></tr>
+            <tr><td>40,960</td><td>2,463</td></tr>
+            <tr><td>49,152</td><td>2,923</td></tr>
+            <tr><td>57,344</td><td>3,474</td></tr>
+            <tr><td>65,535</td><td>3,910</td></tr>
+          </tbody>
+        </table>
+        <t>* This table actually iterates the PBKDF2_SHA256 algorithm by <tt>L &times; SCALING_FACTOR</tt> (in this case, 256).
+          So the amount of iterations in the calculation is actually scaled.</t>
+      </section>
+
+      <section anchor="appendix-speed-argon2d">
+        <name>Argon2d</name>
+        <table anchor="speed-argon2d">
+          <name>Speed of Demanding Argon2d Address Generation</name>
+          <thead>
+            <tr>
+              <th>Iterations 'L'</th>
+              <th>Time (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>8,192</td><td>124</td></tr>
+            <tr><td>16,384</td><td>249</td></tr>
+            <tr><td>24,576</td><td>362</td></tr>
+            <tr><td>32,768</td><td>488</td></tr>
+            <tr><td>40,960</td><td>655</td></tr>
+            <tr><td>49,152</td><td>745</td></tr>
+            <tr><td>57,344</td><td>860</td></tr>
+            <tr><td>65,535</td><td>998</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section anchor="appendix-speed-scrypt">
+        <name>Scrypt</name>
+        <table anchor="speed-scrypt">
+          <name>Speed of Demanding Scrypt Address Generation</name>
+          <thead>
+            <tr>
+              <th>Iterations 'L'</th>
+              <th>Time (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>8,192</td><td>261</td></tr>
+            <tr><td>16,384</td><td>552</td></tr>
+            <tr><td>24,576</td><td>851</td></tr>
+            <tr><td>32,768</td><td>1,117</td></tr>
+            <tr><td>40,960</td><td>1,501</td></tr>
+            <tr><td>49,152</td><td>1,990</td></tr>
+            <tr><td>57,344</td><td>2,055</td></tr>
+            <tr><td>65,535</td><td>2,283</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section anchor="appendix-speed-minimums">
+        <name>Testing KDFs at Their Minimum Difficulties</name>
+        <t>
+          And lastly, the same mid-tier devices were given the challenge to perform the address generation
+          procedure, but with the KDF parameters set to their LOWEST possible difficulties.
+        </t>
+        <ul>
+          <li><tt>PBKDF2_SHA256</tt>: an <tt>ITERATIONS_FACTOR</tt> of 1.</li>
+          <li><tt>Argon2d</tt>: a <tt>MemorySize</tt> of 8 and a <tt>Parallelism</tt> of 1.</li>
+          <li><tt>Scrypt</tt>: a <tt>SCALING_FACTOR</tt> of 0.</li>
+        </ul>
+        <table anchor="speed-minimums">
+          <name>Address Generation Speeds at Minimum Parameters</name>
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Iterations 'L'</th>
+              <th>Time (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td rowspan="3">PBKDF2_SHA256</td><td>8,192</td><td>1.9</td></tr>
+            <tr><td>32,768</td><td>7.4</td></tr>
+            <tr><td>65,535</td><td>14.7</td></tr>
+            <tr><td rowspan="3">Argon2d</td><td>8,192</td><td>0.1</td></tr>
+            <tr><td>32,768</td><td>0.4</td></tr>
+            <tr><td>65,535</td><td>0.8</td></tr>
+            <tr><td rowspan="3">Scrypt</td><td>8,192</td><td>1.6</td></tr>
+            <tr><td>32,768</td><td>5.8</td></tr>
+            <tr><td>65,535</td><td>12.9</td></tr>
+          </tbody>
+        </table>
+        <t>
+          From this chart, it is clear that selecting the Argon2d KDF and setting its parameters as low as possible
+          results in the fastest VBA computation time by approximately a whole order of magnitude, at least
+          according to the tested devices. For environments seeking to deploy VBAs with the smallest possible verification
+          and/or generation delays, this option will drastically outperform the others.
         </t>
       </section>
     </section>
