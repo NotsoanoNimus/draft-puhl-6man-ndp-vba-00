@@ -56,7 +56,7 @@
     <keyword>privacy</keyword>
     <abstract>
       <t>
-        This document specifies an extensible IPv6 address generation and verification methodology for local
+        This document specifies an extensible IPv6 address generation and verification methodology for SLAAC-enabled local
         networks. Individual link-layer identifiers are bound to sets of deterministic output addresses, which
         maintain user privacy regardless of link-layer identifier stability. Link Vouchers distributed by Router
         Advertisements form a shared consensus between neighbors of the parameters used in the SLAAC address
@@ -192,7 +192,7 @@
         <dt>NUD</dt>
         <dd>Neighbor Unreachability Detection (Section 7.3 of <xref target="RFC4861"/>).</dd>
 
-        <dt>LLADDR or LLID</dt>
+        <dt>LLID</dt>
         <dd>A shorthand representation for the term "Link Layer Address" or "Link Layer Identifier".
           Both terms are synonymous and describe any individual link-layer identifier for a network interface.</dd>
 
@@ -200,11 +200,11 @@
         <dd>Interface Identifier. The unique identifier of an interface on a network. See Section 2.5.1 of <xref target="RFC4291"/>.</dd>
 
         <dt>SLLAO</dt>
-        <dd>Source Link-Layer Address Option. An ND option indicating the LLADDR of the packet sender or
+        <dd>Source Link-Layer Address Option. An ND option indicating the LLID of the packet sender or
           NDAR initiator <xref target="RFC4861"/>.</dd>
 
         <dt>TLLAO</dt>
-        <dd>Target Link-Layer Address Option. An ND option indicating the LLADDR of the NDAR target <xref target="RFC4861"/>.</dd>
+        <dd>Target Link-Layer Address Option. An ND option indicating the LLID of the NDAR target <xref target="RFC4861"/>.</dd>
 
         <dt>DAD</dt>
         <dd>Duplicate Address Detection (Section 5.4 of <xref target="RFC4862"/>).</dd>
@@ -316,28 +316,64 @@
         </t>
 
         <section anchor="summary-overview-goals">
-          <!-- TODO! TODO! -->
           <name>Goals</name>
           <t>
-            From a high level, VBAs attempt to balance network-layer security with privacy without too much additional
-            complexity that would render the protocol unemployable.
-          </t>
-          <t>
-            Many existing proposals have repeated varying iterations and mixtures of two generic mechanisms (and for
-            good reasons):
+            Many existing proposals use varying iterations and mixtures of two generic mechanisms in order to secure NDP
+            (and for good reasons):
           </t>
           <ul>
             <li>Public-Key Cryptography. Used mostly to validate a device is truly the registered or otherwise authenticated
-              owner of the neighbor address (and LLADDR) through various strategies.</li>
+              owner of the neighbor address (and LLID) through various strategies.</li>
             <li>Centralized Registration. Usually used to establish an on-link authority which can directly validate or vouch
               for the bindings returned in an NDAR exchange.</li>
           </ul>
           <t>
-            Voucher-Based Addressing applies alternative -- and considerably weak -- methods to achieve the same goals. 
+            From a high level, VBA attempts to balance network-layer security and privacy in its approach. It applies alternative
+            and considerably weaker methods to achieve the same goals as the two aforementioned mechanisms. But the advantage of
+            VBA is concealed by its apparent weaknesses: it is inherently simple and easy to deploy on a per-node basis.
           </t>
-          <ul>
-            <li></li>
-          </ul>
+          <t>
+            This specification is motivated by the following questions about Neighbor Discovery Protocol:
+          </t>
+          <ol spacing="compact">
+            <li>
+              Why are redirection vulnerabilites not already remediated? If they are, why are the solutions not being adopted?
+            </li>
+            <li>
+              How can a protocol existing in almost every private network be changed for the better when it is already widely deployed?
+            </li>
+            <li>
+              Why should a protocol in clear need of security updates use a solution that is a massive burden for network administrators?
+            </li>
+            <li>
+              Must the solution really be centralized if malicious redirections happen on a host-by-host basis?
+            </li>
+            <li>
+              Is this possible to solve while considering address privacy?
+            </li>
+          </ol>
+          <t>
+            ... to which the following answers are provided:
+          </t>
+          <ol spacing="compact">
+            <li>
+              By affecting the protocol as little as possible. A small packet inspection at key points is all that is required to squeeze
+              in address ownership verification.
+            </li>
+            <li>
+              It simply should not. It also should not need to disrupt the entire network or require sophisticated, time-consuming address
+              generation and acquisition methodologies.
+            </li>
+            <li>
+              Of course not. While central authority and registration can provide trust, ultimately the exchange of LL2IP mappings occurs
+              between two parties. The solution could very well exist end-to-end.
+            </li>
+            <li>
+              This answer first requires a definition of the subjective term 'privacy'. But for the sake of activity correlation or
+              identification, NDP occurs at a local scope. If key knowledge remains only local, then the end result beyond the broadcast
+              domain can be as random as it needs to be.
+            </li>
+          </ol>
         </section>
 
         <section anchor="summary-overview-binding">
@@ -2575,6 +2611,20 @@ COMPUTE & CACHE:
         <!-- See RFCs 4389 & 5909 -->
         <name>Neighbor Discovery Proxies</name>
         <t>
+          <xref target="RFC4389"/> specifies a Neighbor Discovery Proxy as a network-layer device or software used to provide
+          a presence for nodes who have gone off-link or have always been residents off-link. This is supposed to stand in
+          lieu of a classic link-layer bridge.
+        </t>
+        <t>
+          Due to link-layer binding, VBA does not support ND proxying very well unless the proxy is also able to spoof the
+          LLIDs of all the target nodes. These spoofed LLIDs would need to appear on the interface attached to the link that
+          it must receive and answer ND packets on. One solution to enabling ND proxy while keeping the rest of the network
+          secure is to apply the same strategy used for static addressing and create manual cache entries. Another solution
+          might be to enabled the AVGL IEM on the nodes who are required to transact with the proxy.
+        </t>
+        <t>
+          Support for ND proxies is not very well defined by this specification, as it conflicts with one of its primary goals.
+          Future experimentation may wish to uncover ways by which this could be integrated into VBA-enabled networks.
         </t>
       </section>
 
@@ -2714,6 +2764,7 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6555.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3279.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4301.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4389.xml"/>
         <reference anchor="ITU.X690.2002" target="https://www.itu.int/rec/T-REC-X.690">
           <front>
             <title>Information Technology - ASN.1 encoding rules: Specification of Basic Encoding Rules (BER),
@@ -2764,6 +2815,7 @@ COMPUTE & CACHE:
             <![CDATA[
 uint64_t compute_address_suffix(link_voucher_t *lv,
                                 uint8_t *mac_address,
+                                uint8_t *subnet_prefix,
                                 uint16_t iterations)
 {
     /*
@@ -2776,10 +2828,10 @@ uint64_t compute_address_suffix(link_voucher_t *lv,
 
     /*
      * The 'password' is always the 128-bit voucher seed. The salt
-     *   is a combination of a LLADDR (MAC in this case) + 'vba'
+     *   is a combination of a LLID (MAC in this case) + 'vba'
      *   + the 64-bit subnet prefix (or left-most 64 bits of the
      *   unicast address that will be built). This example uses
-     *   "fe80::" for the subnet prefix.
+     *   "fe80::" as the default subnet prefix.
      *   All values are big-endian (network byte order).
      */
     uint8_t salt[VOUCHER_SALT_LENGTH_MAC] = {
@@ -2787,11 +2839,13 @@ uint64_t compute_address_suffix(link_voucher_t *lv,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             /* Static 'vba' (3 bytes) */
             'v', 'b', 'a',
-            /* Subnet prefix (8 bytes */
+            /* Subnet prefix (8 bytes) */
             0xFE, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
     memcpy(&salt[0], &mac_address[0], 6);
-    /* memcpy(&salt[9], &subnet_prefix[0], 8); */
+
+    if (NULL != subnet_prefix)
+        memcpy(&salt[9], &subnet_prefix[0], 8);
 
     /* In this case, the 'algo' member is a union. */
     switch (lv->algo->type) {
@@ -2817,7 +2871,6 @@ uint64_t compute_address_suffix(link_voucher_t *lv,
                              res_buffer_size);
             break;
         case SCRYPT:
-            /* https://www.tarsnap.com/scrypt.html */
             libscrypt_scrypt(lv->seed,
                              VOUCHER_SEED_LENGTH,
                              salt,
@@ -2854,7 +2907,7 @@ uint64_t compute_address_suffix(link_voucher_t *lv,
       <section anchor="appendix-code-verification">
         <name>Address Verification Sample</name>
         <t>
-          This snippet references methods from the Address Generation code in the above section.
+          This snippet references methods from the Address Generation code in the previous section.
         </t>
         <figure>
           <name>Sample Address Verification Code in C</name>
@@ -2862,7 +2915,8 @@ uint64_t compute_address_suffix(link_voucher_t *lv,
             <![CDATA[
 bool verify_address_suffix(uint64_t suffix,
                            link_voucher_t *lv,
-                           uint8_t* mac_address)
+                           uint8_t *mac_address
+                           uint8_t *subnet_prefix)
 {
     /* First extract the 'L' value from 'Z' in the input SUFFIX. */
     uint16_t first_seed_hextet = *((uint16_t *)&lv->seed[0]);
@@ -2872,6 +2926,7 @@ bool verify_address_suffix(uint64_t suffix,
     /* Now independently compute SUFFIX like the generator does. */
     uint64_t computed_suffix = compute_address_suffix(lv,
                                                       mac_address,
+                                                      subnet_prefix,
                                                       iterations);
 
     /* If the independent calculation yields the same suffix as the
