@@ -1,15 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 
-     draft-rfcxml-general-template-standard-00
-  
-     This template includes examples of the most commonly used features of RFCXML with comments 
-     explaining how to customise them. This template can be quickly turned into an I-D by editing 
-     the examples provided. Look for [REPLACE], [REPLACE/DELETE], [CHECK] and edit accordingly.
-     Note - 'DELETE' means delete the element or attribute, not just the contents.
-     
-     Documentation is at https://authors.ietf.org/en/templates-and-schemas
--->
-<?xml-model href="rfc7991bis.rnc"?>  <!-- Required for schema validation and schema-aware editing -->
+<?xml-model href="rfc7991bis.rnc"?>
 
 <!DOCTYPE rfc [
   <!ENTITY nbsp    "&#160;">
@@ -93,7 +83,7 @@
         slightly augments the generation process of opaque IIDs <xref target="RFC7217"/> and provides insights about more recent address
         generation methodologies. <xref target="RFC7721"/> and
         <xref target="RFC8064"/> express deep concerns about using link-layer identifiers in the address generation process, citing network
-        activity correlation, location tracking, address scanning, and targeted exploitation as significant problems.
+        activity correlation, location tracking, address scanning, and targeted exploitation as problematic byproducts.
       </t>
       <t>
         NDP Address Resolution (Section 7.2 of <xref target="RFC4861"/>) establishes a process for discovering the
@@ -337,13 +327,13 @@
           </t>
           <ol spacing="compact">
             <li>
-              Why are redirection vulnerabilites not already remediated? If they are, why are the solutions not being adopted?
+              Why are redirection vulnerabilities not already remediated? If they are, why are the solutions not being adopted?
             </li>
             <li>
               How can a protocol existing in almost every private network be changed for the better when it is already widely deployed?
             </li>
             <li>
-              Why should a protocol in clear need of security updates use a solution that is a massive burden for network administrators?
+              Why should a protocol in clear need of security updates settle on a solution that is a massive burden for network administrators?
             </li>
             <li>
               Must the solution really be centralized if malicious redirections happen on a host-by-host basis?
@@ -356,6 +346,10 @@
             ... to which the following answers are provided:
           </t>
           <ol spacing="compact">
+            <li>
+              The problem IS technically resolved. But time has shown the resolution to be idealistic, overly complex, and just plain out
+              of reach for the majority of potential implementers.
+            </li>
             <li>
               By affecting the protocol as little as possible. A small packet inspection at key points is all that is required to squeeze
               in address ownership verification.
@@ -1597,7 +1591,7 @@ COMPUTE & CACHE:
         </t>
         <ul>
           <li>LOVMA traffic is considered unidirectional. Nodes SHOULD NOT send unicast responses in reply to multicast traffic.
-            This recommended constraint acts to prevent asymmetric traffic volumes and potential denial of service vulnerabilites
+            This recommended constraint acts to prevent asymmetric traffic volumes and potential denial of service vulnerabilities
             leveraging the LOVMA.</li>
           <li>All LOVMA datagrams MUST be User Datagram Protocol (UDP) <xref target="RFC768"/> packets.</li>
           <li>VBA-enabled nodes MUST NOT assume that any other VBA-enabled nodes are subscribed to the LOVMA multicast group or
@@ -2370,7 +2364,7 @@ COMPUTE & CACHE:
         <section anchor="security-dos-others">
           <name>Others</name>
           <t>
-            Other classic ND vulnerabilites for denial of service also apply to this protocol because of its goal aiming to NOT
+            Other classic ND vulnerabilities for denial of service also apply to this protocol because of its goal aiming to NOT
             significantly amend NDAR. Many of these concerns can be found in <xref target="RFC3756"/>.
           </t>
         </section>
@@ -3081,7 +3075,7 @@ bool verify_address_suffix(uint64_t suffix,
       <name>Acknowledgements</name>
       <t>
         The author would like to thank Dr. Jinhua Guo of the University of Michigan for his valuable,
-        constructive criticisms and support of this document.
+        constructive feedback and support of this document.
       </t>
     </section>
   </back>
