@@ -903,11 +903,17 @@ Formulas:
             There are a few situations when NDAR packets <bcp14>MUST</bcp14> pass through the VBA verification shim for approval:
           </t>
           <ul spacing="compact">
-            <li>A NS packet is received with a SLLAO attached and a NC entry for the IP Source Address is not already present.</li>
-            <li>A NA packet is received for a Target Address whose NC entry is in the INCOMPLETE state.</li>
+            <li>A NS, RS, or RA packet is received with a SLLAO attached and a NC entry for the IP Source Address is not already present.</li>
+            <li>A NA or Redirect packet is received for a Target Address whose NC entry is in the INCOMPLETE state.</li>
             <li>If the receiving interface is using the AGVL IEM: a NA packet is received and the Override flag is set.</li>
-            <li>A NA packet is received on a node supporting Gratuitious ND and the Target Address does not have a NC entry.</li>
+            <li>A NA or Redirect packet is received on a node supporting Gratuitious ND and the Target Address does not have a NC entry.</li>
           </ul>
+          <t>
+            This list is perhaps not all-inclusive and does not consider other ND extensions which may allow certain ND packets to
+            modify NC entries. Again, except for forward progress indications through NUD, NDAR packets of any type seeking to update
+            an active cache entry (whether state or values), or to create a new entry, <bcp14>MUST</bcp14> be pipelined through the
+            VBA verification shim first, depending on IEM.
+          </t>
         </section>
 
         <section anchor="behavioral-nud">
