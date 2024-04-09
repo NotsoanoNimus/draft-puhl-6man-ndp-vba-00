@@ -2953,9 +2953,9 @@ bool verify_address_suffix(uint64_t suffix,
         can be made of expected computation times relative to iterations counts, scaled up or down to certain difficulty levels.
       </t>
       <t>
-        NOTE: these three table ARE NOT related to one another, nor should they be read comparatively -- parameters were
+        NOTE: these three tables ARE NOT related to one another, nor should they be read comparatively -- parameters were
         chosen arbitrarily from an upper difficulty range for each KDF to evaluate their performance on mid-tier hardware.
-        Address verification uses the same results because its process is synonymous to generation, so this benchmarking
+        Address verification uses the same results because its process mirrors address generation, so this benchmarking
         process is NOT repeated for VBA verification in this document.
       </t>
 
@@ -2981,7 +2981,7 @@ bool verify_address_suffix(uint64_t suffix,
           </tbody>
         </table>
         <t>* This table actually iterates the PBKDF2_SHA256 algorithm by <tt>L &times; SCALING_FACTOR</tt> (in this case, 256).
-          So the amount of iterations in the calculation is actually scaled.</t>
+          So the amount of iterations in the calculation is actually scaled up.</t>
       </section>
 
       <section anchor="appendix-speed-argon2d">
@@ -3066,7 +3066,7 @@ bool verify_address_suffix(uint64_t suffix,
           From this chart, it is clear that selecting the Argon2d KDF and setting its parameters as low as possible
           results in the fastest VBA computation time by approximately a whole order of magnitude, at least
           according to the tested devices. For environments seeking to deploy VBAs with the smallest possible verification
-          and/or generation delays, this option will drastically outperform the others.
+          and/or generation delays, this option will drastically out-perform the others.
         </t>
       </section>
     </section>
