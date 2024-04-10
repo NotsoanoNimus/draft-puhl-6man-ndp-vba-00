@@ -169,7 +169,7 @@
         <dt>CGA</dt>
         <dd>Cryptographically Generated Address <xref target="RFC3972"/>.</dd>
 
-        <dt>NDAR (sometimes AR)</dt>
+        <dt>NDAR</dt>
         <dd>The Neighbor Discovery Address Resolution process; see Section 7.2 of <xref target="RFC4861"/>.</dd>
 
         <dt>NC</dt>
@@ -961,7 +961,7 @@ Formulas:
             Gratuitious ND <xref target="RFC9131"/> allows routers to create STALE NC entries from received NAs, in order to
             expedite the exchange of host LLID bindings. VBAs <bcp14>SHOULD</bcp14> support this option, as routers preemptively verifying a
             host's address bindings will allow the host to communicate off-link much faster than if the router required a
-            reverse AR process for the host.
+            reverse NDAR process for the host.
           </t>
           <t>
             Implementations <bcp14>SHOULD</bcp14> be flexible with Gratuitious ND in how it applies to IEMs requiring VBA verification. If
@@ -1146,18 +1146,15 @@ COMPUTE & CACHE:
             Specifies exactly which type of key derivation function to use in address generation and its corresponding difficulty.
             See <xref target="addenda-voucher-kdfs"/> for more details.
           </dd>
-          <dt>PublicKey (named field only)</dt>
-          <dd>
-            This value <bcp14>MUST NOT</bcp14> be directly present in LV options. Extended ECDSA signatures have a public key recovery feature which
-            allows the PublicKey value to be implied within the encoded signature value <xref target="X9.142"/>.
-            Receivers are <bcp14>REQUIRED</bcp14> to extract the PublicKey value each time they validate an LV signature, to ensure it has not changed.
-            This implied public key value used to sign LVs <bcp14>MUST NOT</bcp14> change in distributions of the same LV identified by the VoucherID value.
-          </dd>
-          <dt>ECDSA Signature</dt>
+          <dt>ECDSA PublicKey &amp; Signature</dt>
           <dd>
             <t>
-              A variable-length field containing a DER-encoded ECDSA signature, derived using the Private Key corresponding to
-              the sender's LV public key. The signature is computed over a series of sequential octets, constructed in the following order:
+              A variable-length field containing a DER-encoded ECDSA <xref target="ECDSA"/> public key of type <tt>SubjectPublicKeyInfo</tt>
+              according to Section 2 of <xref target="RFC5480"/>.
+            </t>
+            <t>
+              The public key structure is followed immediately by an adjacent DER-encoded ECDSA signature, derived using the Private Key
+              corresponding to PublicKey. The signature is computed over a series of sequential octets, constructed in the following order:
             </t>
             <ol spacing="compact">
               <li>The 16-bit 'Expiration' value.</li>
@@ -1168,9 +1165,29 @@ COMPUTE & CACHE:
             </ol>
             <t>
               The algorithm used in signature computation is ecdsa-with-SHA256, as defined in Section 3.2 of <xref target="RFC5758"/>.
-              This field <bcp14>MUST</bcp14> be a DER-encoded <xref target="ITU.X690.2002"/> ASN.1 structure of the type ECDSA-Sig-Value
+              The Signature <bcp14>MUST</bcp14> be a DER-encoded <xref target="ITU.X690.2002"/> ASN.1 structure of the type ECDSA-Sig-Value
               (Section 2.2.3 of <xref target="RFC3279"/>).
             </t>
+            <t>
+              The final field appears as the following two adjacent DER structures:
+            </t>
+            <figure>
+              <artwork type="ascii-art">
+                <![CDATA[
+SubjectPublicKeyInfo  ::=  SEQUENCE  {
+  algorithm         ::=  SEQUENCE {
+    algorithm   OBJECT IDENTIFIER,
+    parameters  ANY DEFINED BY algorithm OPTIONAL
+  },
+  subjectPublicKey  BIT STRING
+}
+ECDSA-Sig-Value  ::=  SEQUENCE  {
+  r  INTEGER,
+  s  INTEGER
+}
+                ]]>
+              </artwork>
+            </figure>
           </dd>
           <dt>Padding</dt>
           <dd>
@@ -1761,6 +1778,10 @@ COMPUTE & CACHE:
             temporarily valid for the link.
           </t>
           <t>
+            If the Signature field is not verifiable using the current LV's PublicKey, then receivers <bcp14>MUST</bcp14>
+            ignore the packet. If there is no current LV and a VHA is received, then it <bcp14>MUST</bcp14> be ignored.
+          </t>
+          <t>
             The handoff window duration is based on the 'Expiration' value of the current VB's LV packet at the time the VHA is sent.
             Exceedingly long Expirations will entail exceedingly long handoff windows, and there is no limit to the duration of a handoff.
             VHA retransmission frequency is variable but is <bcp14>RECOMMENDED</bcp14> to follow the same frequency as the node's previous RA or Redirect
@@ -1815,7 +1836,7 @@ COMPUTE & CACHE:
           <dl newline="true">
             <dt>Type</dt><dd>3</dd>
             <dt>Length</dt><dd>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.</dd>
-            <dt>Refresh Bit</dt>
+            <dt>R (Refresh Bit)</dt>
             <dd>
               A single bit. When set to '1', it indicates that the transition is only a LV refresh and does not represent a change of
               the link VB to a different node. This field is mostly used for informational purposes and for any implementation-specific
@@ -1844,18 +1865,12 @@ COMPUTE & CACHE:
             <dd>
               The VoucherID of the upcoming LV which will be assuming 'active' status on the network after the handoff window completes.
             </dd>
-            <dt>PublicKey (named field only)</dt>
-            <dd>
-              This value <bcp14>MUST NOT</bcp14> be directly present in the VHA datagram. Extended ECDSA signatures have a public key recovery feature which
-              allows the PublicKey value to be implied within the encoded signature value <xref target="X9.142"/>.
-              Receivers are <bcp14>REQUIRED</bcp14> to extract the PublicKey value each time they validate a VHA signature.
-              This implied public key value used to sign the VHA MUST match the stored PublicKey for the Signer VoucherID.
-            </dd>
             <dt>ECDSA Signature</dt>
             <dd>
               <t>
-                A variable-length field containing a DER-encoded ECDSA signature (and thus PublicKey), derived using the Private Key corresponding to
-                the sender's Signer VoucherID. The signature is computed over a series of sequential octets, constructed in the following order:
+                A variable-length field containing a DER-encoded ECDSA <xref target="ECDSA"/> signature (and thus PublicKey), derived using the
+                Private Key corresponding to the sender's Signer VoucherID. The signature is computed over a series of sequential octets,
+                constructed in the following order:
               </t>
               <ol spacing="compact">
                 <li>The 64-bit 'Timestamp' value.</li>
@@ -2752,6 +2767,7 @@ COMPUTE & CACHE:
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6555.xml"/> <!-- Happy Eyeballs -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>  <!-- UDP -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3279.xml"/> <!-- Algos+IDs for X.509 PKI CRL -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5480.xml"/> <!-- ECC SubjectPublicKeyInfo -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4301.xml"/> <!-- Security Arch for IP -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/> <!-- IANA Section Guidelines -->
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/> <!-- BCP14 keywords -->
@@ -2774,18 +2790,25 @@ COMPUTE & CACHE:
             <date year="2024" month="April"/>
           </front>
         </reference>
-        <reference anchor="X9.142">
+        <reference anchor="ECDSA" target="https://doi.org/10.1007/s102070100002">
           <front>
             <title>
-              Public Key Cryptography for the Financial Services Industry: The Elliptic Curve Digital Signature Algorithm (ECDSA)
+              The Elliptic Curve Digital Signature Algorithm (ECDSA)
             </title>
-            <author>
-              <organization>American National Standards Institute</organization>
+            <author fullname="Don Johnson" initials="D." surname="Johnson">
+              <organization>Certicom Research, Canada</organization>
             </author>
-            <date year="2020" month="September"/>
+            <author fullname="Alfred Menezes" initials="A." surname="Menezes">
+              <organization>Certicom Research, Canada</organization>
+            </author>
+            <author fullname="Scott Vanstone" initials="S." surname="Vanstone">
+              <organization>Certicom Research, Canada</organization>
+            </author>
+            <date year="2001" month="August"/>
           </front>
+          <seriesInfo name="DOI" value="10.1007/s102070100002"/>
         </reference>
-        <reference anchor="KDFPW">
+        <reference anchor="KDFPW" target="https://doi.org/10.6028/NIST.SP.800-132">
           <front>
             <title>
               Recommendation for Password-Based Key Derviation, Part 1: Storage Applications
@@ -2795,6 +2818,7 @@ COMPUTE & CACHE:
             </author>
             <date year="2010" month="December"/>
           </front>
+          <seriesInfo name="DOI" value="10.6028/NIST.SP.800-132"/>
         </reference>
         <reference anchor="MEMBOUND" target="https://doi.org/10.1145/1064340.1064341">
           <front>
@@ -2813,6 +2837,7 @@ COMPUTE & CACHE:
             </author>
             <date year="2005" month="May"/>
           </front>
+          <seriesInfo name="DOI" value="10.1145/1064340.1064341"/>
         </reference>
       </references>
     </references>
