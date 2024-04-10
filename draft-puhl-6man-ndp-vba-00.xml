@@ -2399,8 +2399,8 @@ COMPUTE & CACHE:
         <t>
           The selection of an appropriate KDF is essential to scale the difficulty of discovering hash collisions. The choice of KDF
           is also essential for the notion of fairness in computing the generated address. As described in <xref target="addenda-voucher-kdfs"/>,
-          choosing a CPU-bound KDF algorithm is significantly more likely to result in disparate computation times across link nodes
-          than choosing a Memory-bound KDF for VBA-related calculations <!-- ext ref -->.
+          a network having widely varying computing power across nodes will record quite disparate computation times when using CPU-bound
+          KDFs instead of choosing Memory-bound KDFs for address calculations <xref target="MEMBOUND"/>.
         </t>
         <t>
           Even when using memory-bound KDFs like Argon2d, the proper delegation of baseline algorithm parameters in the LV <bcp14>SHOULD</bcp14> always
@@ -2794,6 +2794,24 @@ COMPUTE & CACHE:
               <organization>National Institute of Standards and Technology</organization>
             </author>
             <date year="2010" month="December"/>
+          </front>
+        </reference>
+        <reference anchor="MEMBOUND" target="https://doi.org/10.1145/1064340.1064341">
+          <front>
+            <title>Moderately Hard, Memory-bound Functions</title>
+            <author fullname="Martin Abadi" initials="M." surname="Abadi">
+              <organization>University of California at Santa Cruz</organization>
+            </author>
+            <author fullname="Mike Burrows" initials="M." surname="Burrows">
+              <organization>Google</organization>
+            </author>
+            <author fullname="Mark Manasse" initials="M." surname="Manasse">
+              <organization>Microsoft Research</organization>
+            </author>
+            <author fullname="Ted Wobber" initials="T." surname="Wobber">
+              <organization>Microsoft Research</organization>
+            </author>
+            <date year="2005" month="May"/>
           </front>
         </reference>
       </references>
