@@ -1146,10 +1146,10 @@ COMPUTE & CACHE:
             Specifies exactly which type of key derivation function to use in address generation and its corresponding difficulty.
             See <xref target="addenda-voucher-kdfs"/> for more details.
           </dd>
-          <dt>PublicKey (named field; NOT present in option data)</dt>
+          <dt>PublicKey (named field only)</dt>
           <dd>
             This value <bcp14>MUST NOT</bcp14> be directly present in LV options. Extended ECDSA signatures have a public key recovery feature which
-            allows the PublicKey value to be implied within the encoded signature value <!-- ref -->.
+            allows the PublicKey value to be implied within the encoded signature value <xref target="X9.142"/>.
             Receivers are <bcp14>REQUIRED</bcp14> to extract the PublicKey value each time they validate an LV signature, to ensure it has not changed.
             This implied public key value used to sign LVs <bcp14>MUST NOT</bcp14> change in distributions of the same LV identified by the VoucherID value.
           </dd>
@@ -1844,6 +1844,13 @@ COMPUTE & CACHE:
             <dd>
               The VoucherID of the upcoming LV which will be assuming 'active' status on the network after the handoff window completes.
             </dd>
+            <dt>PublicKey (named field only)</dt>
+            <dd>
+              This value <bcp14>MUST NOT</bcp14> be directly present in the VHA datagram. Extended ECDSA signatures have a public key recovery feature which
+              allows the PublicKey value to be implied within the encoded signature value <xref target="X9.142"/>.
+              Receivers are <bcp14>REQUIRED</bcp14> to extract the PublicKey value each time they validate a VHA signature.
+              This implied public key value used to sign the VHA MUST match the stored PublicKey for the Signer VoucherID.
+            </dd>
             <dt>ECDSA Signature</dt>
             <dd>
               <t>
@@ -2108,7 +2115,7 @@ COMPUTE & CACHE:
         <t>
           Thus KDFs are applied to VBAs for the added purpose of slowing collision discoveries. This same tradeoff
           of requiring slightly more time for address computation in order to protect against brute-force enumeration
-          is a strategy also utilized by myriad password storage systems to protect user secrets (<!-- ref -->).
+          is a strategy also recommended for use in password storage systems to protect user secrets <xref target="KDFPW"/>.
         </t>
         <t>
           To prevent any possible time-memory tradeoff attacks, the LV is distributed between nodes to ensure that
@@ -2241,7 +2248,7 @@ COMPUTE & CACHE:
           </t>
           <t>
             To enforce long-term ownership in the face of this link-layer impersonation problem, Neighbor Discovery Sessions
-            <!-- ref --> can be implemented as a complement to VBAs. See <xref target="security-sessions"/> for a deeper
+            <xref target="NDSESS"/> can be implemented as a complement to VBAs. See <xref target="security-sessions"/> for a deeper
             exploration of ND Sessions as applied to VBA.
           </t>
         </section>
@@ -2694,26 +2701,11 @@ COMPUTE & CACHE:
           SEND for this very reason: VBAs do NOT require knowledge of some private value that is publicly verifiable.
         </t>
         <t>
-          ND Session options <!-- ref --> are used to exchange session details using Zero-Knowledge
+          ND Session options <xref target="NDSESS"/> are used to exchange session details using Zero-Knowledge
           Password Proof (ZKPP) techniques. These options do not interfere with the VBA verification process between two
           nodes, and act to further bolster confidence in neighbor verification over a long-term session. ZKPP allows a
           node to express knowledge of a particular password without exposing the password itself; this typically happens
           through a clever hashing mechanism known as 'reverse hash chain revealing'.
-        </t>
-        <t>
-          An ND Session is a long-term exchange bound to one single instance of NDAR between a set of LLIDs and IP addresses.
-          Changing any of those four variables will necessitate a new Session be formed. A per-session,
-          random password is chosen on each session node, whose hash value is repeatedly iterated with a salt value consisting of
-          session variables and then given to the session peer. Nodes can prove knowledge of their initial passwords in each ND
-          message by slowly revealing each one-time-use 'ancestor' hash in the iteration chain, going back to the Root Hash. See
-          the specification <!-- ref --> for more information about the inner workings of ND Sessions.
-        </t>
-        <t>
-          ZKPP-based sessions therefore provide strong protection against Identity Assumption attacks occurring in the middle
-          of a communication between two neighbors. They are still susceptible to impersonations at the very start of the ND
-          Session, but this would require a very opportunistic and reactive attacker, since Sessions can last up to days at a time
-          without any update. Implementing ND Session options with VBAs, then, simply (again) shims the NDAR process with
-          Session options. Such implementations <bcp14>SHOULD</bcp14> always validate the underlying session BEFORE processing any VBA verifications.
         </t>
         <t>
           To summarize, ND Sessions reassure two communicating neighbors of each others' persistent identities; on-path attackers
@@ -2734,37 +2726,36 @@ COMPUTE & CACHE:
       <name>References</name>
       <references>
         <name>Normative References</name>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4291.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3972.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6105.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7721.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6104.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7217.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3756.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8064.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8981.xml"/>
-        <!-- Default KDF Definitions -->
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9106.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7914.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml"/> <!-- NDP -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4862.xml"/> <!-- SLAAC -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8018.xml"/> <!-- PKCS#5: PW-based Crypto v2.1 -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9106.xml"/> <!-- Argon2 -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7914.xml"/> <!-- Scrypt PBKDF -->
       </references>
       <references>
         <name>Informative References</name>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4429.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7527.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5758.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6555.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3279.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4301.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4389.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4291.xml"/> <!-- IPv6 Addr Architecture -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3756.xml"/> <!-- IPv6 ND Trust Models, Threats -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7217.xml"/> <!-- Opaque IIDs with SLAAC -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7721.xml"/> <!-- Sec+Priv Consid for IPv6 Gen -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8064.xml"/> <!-- Rec. on Stable IPv6 IIDs -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8981.xml"/> <!-- Temp Addr Ext for SLAAC -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6104.xml"/> <!-- Rogue IPv6 RA Problem -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6105.xml"/> <!-- RA Guard -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3971.xml"/> <!-- SEND -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3972.xml"/> <!-- CGA -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4429.xml"/> <!-- Optimistic DAD -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7527.xml"/> <!-- Enhanced DAD -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9131.xml"/> <!-- Gratuitous ND -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4389.xml"/> <!-- ND Proxy -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5758.xml"/> <!-- X.509 PKI: EC/DSA -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6555.xml"/> <!-- Happy Eyeballs -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.768.xml"/>  <!-- UDP -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3279.xml"/> <!-- Algos+IDs for X.509 PKI CRL -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4301.xml"/> <!-- Security Arch for IP -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/> <!-- IANA Section Guidelines -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/> <!-- BCP14 keywords -->
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/> <!-- BCP14 ambiguities -->
         <reference anchor="ITU.X690.2002" target="https://www.itu.int/rec/T-REC-X.690">
           <front>
             <title>Information Technology - ASN.1 encoding rules: Specification of Basic Encoding Rules (BER),
@@ -2774,28 +2765,38 @@ COMPUTE & CACHE:
             </author>
           </front>
         </reference>
-      </references>
-      <!-- <references>
-        <name>Informative References</name>
-        <reference anchor="exampleRefMin">
+        <reference anchor="NDSESS" target="https://datatracker.ietf.org/doc/draft-puhl-6man-ndsess/">
           <front>
-            <title>Title [REPLACE]</title>
-            <author initials="Initials [REPLACE]" surname="Surname [REPLACE]">
-              <organization/>
+            <title>End-to-End Session Option for Neighbor Discovery (draft-puhl-6man-ndsess-00)</title>
+            <author fullname="Zack Puhl" initials="Z." surname="Puhl">
+              <organization>University of Michigan</organization>
             </author>
-            <date year="2006"/>
+            <date year="2024" month="April"/>
           </front>
         </reference>
-        <reference anchor="exampleRefOrg" target="http://www.example.com/">
+        <reference anchor="X9.142">
           <front>
-            <title>Title [REPLACE]</title>
+            <title>
+              Public Key Cryptography for the Financial Services Industry: The Elliptic Curve Digital Signature Algorithm (ECDSA)
+            </title>
             <author>
-              <organization>Organization [REPLACE]</organization>
+              <organization>American National Standards Institute</organization>
             </author>
-            <date year="1984"/>
+            <date year="2020" month="September"/>
           </front>
-        </reference>       
-      </references> -->
+        </reference>
+        <reference anchor="KDFPW">
+          <front>
+            <title>
+              Recommendation for Password-Based Key Derviation, Part 1: Storage Applications
+            </title>
+            <author>
+              <organization>National Institute of Standards and Technology</organization>
+            </author>
+            <date year="2010" month="December"/>
+          </front>
+        </reference>
+      </references>
     </references>
 
     <section anchor="appendix-code">
