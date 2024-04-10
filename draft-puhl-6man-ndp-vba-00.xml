@@ -1084,7 +1084,7 @@ COMPUTE & CACHE:
           The Link Voucher (LV) option specifies the VBA generation and verification parameters which on-link nodes <bcp14>MUST</bcp14> agree upon.
         </t>
         <figure>
-          <name>Structure of the NDP Link Voucher option</name>
+          <name>Structure of the NDP Link Voucher Option</name>
           <artwork type="ascii-art" name="linkVoucherOption.txt">
             <![CDATA[
    0                   1                   2                   3
@@ -1457,7 +1457,7 @@ COMPUTE & CACHE:
           hint to recipients which active Link Voucher ID and IEM is being used on the source interface.
         </t>
         <figure>
-          <name>Structure of the NDP Voucher Summary option</name>
+          <name>Structure of the NDP Voucher Summary Option</name>
           <artwork type="ascii-art" name="voucherSummaryOption.txt">
             <![CDATA[
    0                   1                   2                   3
