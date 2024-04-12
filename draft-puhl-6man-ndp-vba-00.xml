@@ -554,7 +554,7 @@
             process.
           </t>
           <t>
-            Because LV distribution to interfaces requires a 'first-come-first-serve' trust, it is essential for
+            Because LV distribution to interfaces requires Trust On First Use <xref target="TOFU"/>, it is essential for
             more adversarial networks to implement some form of protection against rogue LVs at a lower or intermediate
             level. See <xref target="bearers-vigilance"/> for more information. In the cases where these protective
             mechanisms are not available, administrators <bcp14>MAY</bcp14> choose to set LV information on each node statically.
@@ -2283,7 +2283,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           security employed in the local network. Without RA-Guard, false VBs are free to constantly advertise
           their own rogue LVs to other hosts. For hosts already on the network with an active LV, this is only
           a problem if VHAs in the LOVMA are not being used and the current LV expires. For hosts joining the
-          network for the first time, there is a timing opportunity for an abuse of 'first-come-first-serve' trust.
+          network for the first time, there is a timing opportunity for an abuse of Trust On First Use <xref target="TOFU"/>.
         </t>
         <t>
           If the legitimate VB goes offline and is not able to transmit any updated LVs to the network, the
@@ -2700,7 +2700,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <t>
           Such an amendment to LV options is beyond the scope of this document. It is suggested as a possible future endeavor
           that could make VBAs a more secure, isolated, and end-to-end solution, instead of a specification which relies on
-          first-come-first-serve trust.
+          Trust On First Use <xref target="TOFU"/>.
         </t>
       </section>
 
