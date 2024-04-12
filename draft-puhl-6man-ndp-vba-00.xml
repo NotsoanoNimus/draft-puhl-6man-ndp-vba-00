@@ -2136,7 +2136,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <t>
           Thus KDFs are applied to VBAs for the added purpose of slowing collision discoveries. This same tradeoff
           of requiring slightly more time for address computation in order to protect against brute-force enumeration
-          is a strategy also recommended for use in password storage systems to protect user secrets <xref target="KDFPW"/>.
+          is a strategy also recommended for use in password storage systems to protect user secrets <xref target="SP.800-132"/>.
         </t>
         <t>
           To prevent any possible time-memory tradeoff attacks, the LV is distributed between nodes to ensure that
@@ -2830,7 +2830,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           </front>
           <seriesInfo name="DOI" value="10.1007/s102070100002"/>
         </reference>
-        <reference anchor="KDFPW" target="https://doi.org/10.6028/NIST.SP.800-132">
+        <reference anchor="SP.800-132" target="https://doi.org/10.6028/NIST.SP.800-132">
           <front>
             <title>
               Recommendation for Password-Based Key Derviation, Part 1: Storage Applications
