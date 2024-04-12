@@ -554,7 +554,7 @@
             process.
           </t>
           <t>
-            Because LV distribution to interfaces requires Trust On First Use <xref target="TOFU"/>, it is essential for
+            Because LV distribution to interfaces requires automatic Trust On First Use <xref target="TOFU"/>, it is essential for
             more adversarial networks to implement some form of protection against rogue LVs at a lower or intermediate
             level. See <xref target="bearers-vigilance"/> for more information. In the cases where these protective
             mechanisms are not available, administrators <bcp14>MAY</bcp14> choose to set LV information on each node statically.
@@ -1275,7 +1275,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             does not contain a valid signature, Timestamp, or Expiration <bcp14>MUST</bcp14> be ignored.
           </t>
           <t>
-            Nodes receiving a new LV for the first time are 'locked' to that LV and its public key through a "Trust On First Use" mechanism
+            Nodes receiving a new LV for the first time are 'locked' to that LV and its public key through an automatic "Trust On First Use" mechanism
             <xref target="TOFU"/> where the Public Key remains trusted until it provides a directive to transfer that trust to another.
             Nodes therefore <bcp14>MUST NOT</bcp14> accept LVs which
             contain any other PublicKey details or signatures which do not use the same PublicKey. This period of trust in the public key
@@ -2284,7 +2284,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           security employed in the local network. Without RA-Guard, false VBs are free to constantly advertise
           their own rogue LVs to other hosts. For hosts already on the network with an active LV, this is only
           a problem if VHAs in the LOVMA are not being used and the current LV expires. For hosts joining the
-          network for the first time, there is a timing opportunity for an abuse of Trust On First Use <xref target="TOFU"/>.
+          network for the first time, there is a timing opportunity for an abuse of automatic Trust On First Use
+          <xref target="TOFU"/>.
         </t>
         <t>
           If the legitimate VB goes offline and is not able to transmit any updated LVs to the network, the
@@ -2701,7 +2702,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <t>
           Such an amendment to LV options is beyond the scope of this document. It is suggested as a possible future endeavor
           that could make VBAs a more secure, isolated, and end-to-end solution, instead of a specification which relies on
-          Trust On First Use <xref target="TOFU"/>.
+          automatic Trust On First Use <xref target="TOFU"/>.
         </t>
       </section>
 
