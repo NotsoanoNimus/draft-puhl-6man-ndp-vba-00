@@ -2750,25 +2750,27 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             <![CDATA[
 Host A*:                                (1)             +~~~~~~~~+
  +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+ <--[a: force offline]   | Host C |
- |  LLID <---[VBA_ok]---> ID  | <--[b: assume identity] +~~~~~|~~+
- +~~~~^~~~~~~~~~~~~~~~~~~~~~~~+                               |
+ |  LLID <---[VBA_ok]---> ID  | <--[b: assume identity] +~~~~~~~~+
+ +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+                               |
+      ^                                                       |
       |   +-=-=-=-=-=-+ <--------[c: NDSO_fail: no ZKPP]------'
       `---|  NDSO_ok  |--.
           +-=-=-=-=-=-+  |
-Host B*:                 |
- +~~~~~~~~~~~~~~~~~~~~~~~v~~~~+
+Host B*:                 v
+ +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
  |  LLID <---[VBA_ok]---> ID  |
- +~~~~^~~~~~~~~~~~~~~~~~~~~~~~+
+ +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+      ^
       |   +-=-=-=-=-=-+
       `---|  NDSO_ok  |--.
           +-=-=-=-=-=-+  |
-Host D:                  |              (2)
- +~~~~~~~~~~~~~~~~~~~~~~~v~~~~+ <--[x: engaged in ND Session]
+Host D:                  v              (2)
+ +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+ <--[x: engaged in ND Session]
  |  LLID <--[VBA_fail]--> ID  | <--[y: VBA verification by shim]
  +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+ <--[z: VBA_fail: invalid binding]
 
 
-* Hosts A & B use 'Strict' ND Session modes and the AGV VBA IEM.
+* Hosts A & B use 'Strict' ND Session modes and the AGV IEM for VBA.
 
 + 'VBA_x' indicates the validity of a VBA binding.
 + 'NDSO_x' indicates the ongoing validity of an ND Session.
