@@ -11,7 +11,7 @@
 
 <rfc
   xmlns:xi="http://www.w3.org/2001/XInclude"
-  category="exp"
+  category="std"
   docName="draft-puhl-6man-ndp-vba-00"
   ipr="trust200902"
   obsoletes=""
@@ -1249,7 +1249,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           <t>
             Protecting the link from rogue LVs is crucial to maintain the full consensus of the local network in VBA generation
             or verification. See <xref target="bearers-vigilance"/> on RA-Guard and <xref target="security-usurp"/> about LV Hijacking
-            for more details. <xref target="security-pki"/> also discusses considerations for incorporating trust anchors and PKI
+            for more details. <xref target="future-pki"/> also discusses considerations for incorporating trust anchors and PKI
             into LV option signatures.
           </t>
         </section>
@@ -2269,7 +2269,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           </t>
           <t>
             To enforce long-term ownership in the face of this link-layer impersonation problem, Neighbor Discovery Sessions
-            <xref target="NDSESS"/> can be implemented as a complement to VBAs. See <xref target="security-sessions"/> for a deeper
+            <xref target="NDSESS"/> can be implemented as a complement to VBAs. See <xref target="future-sessions"/> for a deeper
             exploration of ND Sessions as applied to VBA.
           </t>
         </section>
@@ -2617,7 +2617,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         this document.
       </t>
 
-      <section anchor="security-dhcp">
+      <section anchor="future-dhcp">
         <name>Deployments using DHCP</name>
         <t>
           DHCP is not mentioned elsewhere in this document because VBAs are designed primarily for SLAAC-based environments.
@@ -2635,8 +2635,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         </t>
       </section>
 
-      <section anchor="security-proxies">
-        <!-- See RFCs 4389 & 5909 -->
+      <section anchor="future-proxies">
         <name>Neighbor Discovery Proxies</name>
         <t>
           <xref target="RFC4389"/> specifies a Neighbor Discovery Proxy as a network-layer device or software used to provide
@@ -2644,11 +2643,11 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           lieu of a classic link-layer bridge.
         </t>
         <t>
-          Due to link-layer binding, VBA does not support ND proxying very well unless the proxy is also able to spoof the
+          Due to link-layer binding, VBA does not support ND proxying in its design unless the proxy is also able to spoof the
           LLIDs of all the target nodes. These spoofed LLIDs would need to appear on the interface attached to the link that
           it must receive and answer ND packets on. One solution to enabling ND proxy while keeping the rest of the network
           secure is to apply the same strategy used for static addressing and create manual cache entries. Another solution
-          might be to enabled the AVGL IEM on the nodes who are required to transact with the proxy.
+          might be to enable the AVGL IEM on the nodes who are required to transact with the proxy.
         </t>
         <t>
           Support for ND proxies is not very well defined by this specification, as it conflicts with one of its primary goals.
@@ -2656,7 +2655,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         </t>
       </section>
 
-      <section anchor="security-pki">
+      <section anchor="future-pki">
         <name>Certifying Link Vouchers</name>
         <t>
           Link Vouchers are susceptible to impersonation despite the use of asymmetric cryptography in signing their
@@ -2704,7 +2703,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         </t>
       </section>
 
-      <section anchor="security-sessions">
+      <section anchor="future-sessions">
         <name>Integrating Neighbor Discovery Sessions</name>
         <t>
           As noted in <xref target="summary-overview-adversaries-kill"/>, VBAs are vulnerable to Identity Assumption
@@ -2723,20 +2722,68 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         </t>
         <t>
           ND Session options <xref target="NDSESS"/> are used to exchange session details using Zero-Knowledge
-          Password Proof (ZKPP) techniques. These options do not interfere with the VBA verification process between two
-          nodes, and act to further bolster confidence in neighbor verification over a long-term session. ZKPP allows a
-          node to express knowledge of a particular password without exposing the password itself; this typically happens
-          through a clever hashing mechanism known as 'reverse hash chain revealing'.
+          Password Proof (ZKPP) techniques. These options do not interfere with node VBA verification processes,
+          and act to further bolster confidence in neighbor verification over a long-term session. ZKPP allows a
+          node to express knowledge of a particular password without exposing the password itself; this uses a clever hashing
+          construct known as 'reverse hash chain revealing'. A session also allows a neighbor to 'move' communications
+          to another LLID for the same target IP address while preserving its proof of identity with ZKPP.
         </t>
         <t>
           To summarize, ND Sessions reassure two communicating neighbors of each others' persistent identities; on-path attackers
           will not be able to provide ZKPP. Similarly, VBAs provide LL2IP binding which enforces that NDARs always return the correct
-          LLIDs for specified target IPs.
-          ND Sessions <bcp14>MAY</bcp14> be integrated with VBAs, but are not a requirement and in practice will almost certainly add both
-          extra complication and extra latency to NDAR exchanges. These are again considered a trade-off
-          for allowing ND verifications to be end-to-end, instead of something requiring complex implementations or network
-          infrastructure to be deployed.
+          LLIDs for specified target IPs. Without VBA, nodes are free to express any NDAR LLIDs and IPs (leading to on-path attacks);
+          without ND Sessions, there is no guarantee of identity beyond claiming and responding from a link-layer address.
         </t>
+        <t>
+          ND Session options <bcp14>MAY</bcp14> be integrated with VBAs, but are not a requirement and in practice will add some
+          degree of extra complication to NDAR exchanges. These are again considered a trade-off for allowing ND transactions to
+          be guaranteed end-to-end, instead of requiring more complex implementations or other capable network infrastructure be
+          deployed. Because each specification is decoupled from the other, implementations opting to take advantage of their
+          synergies <bcp14>MAY</bcp14> enforce either of the two specifications in their own preferred ordering.
+        </t>
+        <figure anchor="vba-ndsess-synergy">
+          <name>Synergy of VBA &amp; NDSOs</name>
+          <artwork type="ascii-art" name="vbaSessSynergy.txt">
+            <![CDATA[
+Host A*:                                (1)             +~~~~~~~~+
+ +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+ <--[a: force offline]   | Host C |
+ |  LLID <---[VBA_ok]---> ID  | <--[b: assume identity] +~~~~~|~~+
+ +~~~~^~~~~~~~~~~~~~~~~~~~~~~~+                               |
+      |   +-=-=-=-=-=-+ <--------[c: NDSO_fail: no ZKPP]------'
+      `---|  NDSO_ok  |--.
+          +-=-=-=-=-=-+  |
+Host B*:                 |
+ +~~~~~~~~~~~~~~~~~~~~~~~v~~~~+
+ |  LLID <---[VBA_ok]---> ID  |
+ +~~~~^~~~~~~~~~~~~~~~~~~~~~~~+
+      |   +-=-=-=-=-=-+
+      `---|  NDSO_ok  |--.
+          +-=-=-=-=-=-+  |
+Host D:                  |              (2)
+ +~~~~~~~~~~~~~~~~~~~~~~~v~~~~+ <--[x: engaged in ND Session]
+ |  LLID <--[VBA_fail]--> ID  | <--[y: VBA verification by shim]
+ +~~~~~~~~~~~~~~~~~~~~~~~~~~~~+ <--[z: VBA_fail: invalid binding]
+
+
+* Hosts A & B use 'Strict' ND Session modes and the AGV VBA IEM.
+
++ 'VBA_x' indicates the validity of a VBA binding.
++ 'NDSO_x' indicates the ongoing validity of an ND Session.
+
+(1) Active ND Session thwarts a malicious Identity Assumption attack.
+  (a) Host C forces Host A off the link.
+  (b) Host C then assumes the IP and LLID of Host A for interception.
+  (c) Host C does not know the next-in-line ZKPP token, so the NDSO
+       mandates that Host B deny packets after 1 minute without ZKPP.
+
+(2) VBA denies a bad LLID-to-IP binding and possible on-path attack.
+  (x) Host D successfully engages Host B in a ND Session.
+       This is not hard to do since sessions do not verify bindings.
+  (y) Host D reports a LLID that does not bind properly to its IP.
+  (z) Host D is rejected as illegitimate and a possible attacker.
+            ]]>
+          </artwork>
+        </figure>
       </section>
     </section>
   </middle>
