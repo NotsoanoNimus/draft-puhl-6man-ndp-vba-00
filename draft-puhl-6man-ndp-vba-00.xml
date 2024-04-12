@@ -1276,7 +1276,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           </t>
           <t>
             Nodes receiving a new LV for the first time are 'locked' to that LV and its public key through a "Trust On First Use" mechanism
-            <xref target="TOFU"/>. They <bcp14>MUST NOT</bcp14> accept LVs which
+            <xref target="TOFU"/> where the Public Key remains trusted until it provides a directive to transfer that trust to another.
+            Nodes therefore <bcp14>MUST NOT</bcp14> accept LVs which
             contain any other PublicKey details or signatures which do not use the same PublicKey. This period of trust in the public key
             remains in effect until the cached LV expires or until another LV is elected in a handoff.
           </t>
