@@ -318,9 +318,9 @@
               for the bindings returned in an NDAR exchange.</li>
           </ul>
           <t>
-            From a high level, VBA attempts to balance network-layer security and privacy in its approach. It applies alternative
-            and considerably weaker methods to achieve the same goals as the two aforementioned mechanisms. But the advantage of
-            VBA is concealed by its apparent weaknesses: it is inherently simple and easy to deploy on a per-node basis.
+            From a high level, VBA attempts to balance network-layer security and privacy in its approach. It applies mostly
+            alternative methods to achieve the same goals as the two aforementioned mechanisms. But the advantage of
+            VBA is concealed by its apparent weaknesses: it is inherently simple and easy to deploy at a per-node granularity.
           </t>
           <t>
             This specification is motivated by the following questions about Neighbor Discovery Protocol:
@@ -1275,9 +1275,10 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             does not contain a valid signature, Timestamp, or Expiration <bcp14>MUST</bcp14> be ignored.
           </t>
           <t>
-            Nodes receiving a new LV for the first time are 'locked' to that LV and its public key. They <bcp14>MUST NOT</bcp14> accept LVs which
-            contain any other PublicKey details or signatures which do not use the same PublicKey. This period of 'locking' remains
-            in effect until the cached LV expires or until another LV is elected in a handoff.
+            Nodes receiving a new LV for the first time are 'locked' to that LV and its public key through a "Trust On First Use" mechanism
+            <xref target="TOFU"/>. They <bcp14>MUST NOT</bcp14> accept LVs which
+            contain any other PublicKey details or signatures which do not use the same PublicKey. This period of trust in the public key
+            remains in effect until the cached LV expires or until another LV is elected in a handoff.
           </t>
           <t>
             Received LVs which contain different VBA generation parameters (VoucherID, Seed, Algorithm Type option details)
@@ -2659,7 +2660,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <name>Certifying Link Vouchers</name>
         <t>
           Link Vouchers are susceptible to impersonation despite the use of asymmetric cryptography in signing their
-          details. Once a host becomes aware of a valid public-key and signature, it becomes 'locked' to this key and
+          details. Once a host becomes aware of a valid public-key and signature, it becomes 'locked' to this key (see <xref target="TOFU"/> authentication) and
           will not accept LVs from senders NOT using it in their signatures (unless the current LV expires or a VHA is
           issued). However, the initial exchange -- or first-contact -- between a VB and a neighbor is still vulnerable.
           This is because any malicious node on-link could craft a public key for its own LV and advertise it, if the
@@ -2858,6 +2859,19 @@ Host D:                  |              (2)
             </author>
             <date year="2024" month="April"/>
           </front>
+        </reference>
+        <reference anchor="TOFU" target="https://doi.org/10.1145/2905760.2905761">
+          <front>
+            <title>TOFU for OpenPGP</title>
+            <author fullname="Neal H. Walfield" initials="N. H." surname="Walfield">
+              <organization>Johns Hopkins</organization>
+            </author>
+            <author fullname="Werner Koch" initials="W." surname="Koch">
+              <organization>GnuPG</organization>
+            </author>
+            <date year="2016" month="April"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/2905760.2905761"/>
         </reference>
         <reference anchor="ECDSA" target="https://doi.org/10.1007/s102070100002">
           <front>
