@@ -66,7 +66,7 @@
       <t>
         An on-path attack, historically more well-known as a Man-in-the-Middle (MITM) attack, occurs when a malicious
         network node inserts itself into a communication between two other nodes -- often transparently -- in order to read and/or
-        modify the ongoing communication. This type of weakness is a critical point of concern for network administrators, since the
+        modify the ongoing communication. This type of weakness is a critical point of concern for local network security, since the
         high feasibility of on-path attacks in local networks, where nodes are least likely to encrypt communications,
         compromises confidentiality, integrity, and availability.
       </t>
@@ -78,7 +78,7 @@
         Generated Addresses <xref target="RFC3972"/> have struggled to achieve widespread usage due to their deployment complexities.
       </t>
       <t>
-        Meanwhile, war has raged about the best way to generate a balanced set of IP addresses per-node, for different use-cases, that
+        Meanwhile, war has raged about the best way to generate IP addresses on connected interfaces, for different use-cases, that
         can preserve user privacy. <xref target="RFC8981"/> discusses the generation of both stable and temporary SLAAC addresses. It
         slightly augments the generation process of opaque IIDs <xref target="RFC7217"/> and provides insights about more recent address
         generation methodologies. <xref target="RFC7721"/> and
@@ -89,8 +89,8 @@
         NDP Address Resolution (Section 7.2 of <xref target="RFC4861"/>) establishes a process for discovering the
         link-layer identifier (LLID) of a neighbor's IP address. But this process faithfully relies on some nebulous neighbor owning the target
         IP to respond with its own LLID (and not, e.g., a malicious host to respond with a redirected LLID).
-        If the target IP address is already being softly correlated with a LLID, it is then sensible to tightly bind the two together; 
-        IP addresses should be provably derived from a LLID.
+        If the target IP address is already being correlated with a LLID to which frames are forwarded, it is then sensible to tightly bind the
+        two identifiers together: IP addresses should be provably derived from a LLID.
         In light of address privacy warfare, this binding needs to be done in a way where temporary and stable identifiers can
         coexist and not suffer the aforementioned privacy concerns.
       </t>
@@ -98,11 +98,12 @@
         Voucher-Based Addressing offers local IPv6 networks (1) a common procedure for binding LLIDs to IP addresses,
         (2) rotatable and private IP address generation, and (3) prevention of subversive on-path attacks.
         Address bindings use mutual key derivation functions to map public input components to deterministic output IP addresses.
-        These bindings can be subsequently verified by neighboring nodes who seek to assert a target's address "ownership".
+        These bindings can be subsequently verified, using the same function, by neighboring nodes who seek to assert a target's
+        address "ownership" before initiating communications at higher levels of the network stack.
         All verifications are decentralized and do not require public-key infrastructure; only shared consensus on a distributed,
         pseudo-random value used to seed the address generation procedure. Despite its determinism, the address generation
         process creates rotatable IP addresses which appear statistically random to off-link devices, who are by design
-        unaware of all input parameters associated with the address.
+        unaware of all input parameters associated with the addresses.
       </t>
       <t>
         This document thus represents a cross-application of cryptographic
@@ -110,7 +111,7 @@
         is a high-impact, low-complexity, optional feature for the NDP Address Resolution process,
         with minimal changes to NDP options, formats, or behaviors. It is proposed as an alternative to
         SEND <xref target="RFC3971"/>, CGAs <xref target="RFC3972"/>, and opaque IIDs
-        <xref target="RFC7217"/> in traditional LANs using "reactive" NDP, and it does not intend to obsolete
+        <xref target="RFC7217"/> in traditional LANs, and it does not intend to obsolete
         or update any other document.
       </t>
       
@@ -176,14 +177,14 @@
         <dd>Neighbor Cache, as specified in Section 5.1 of <xref target="RFC4861"/>.</dd>
 
         <dt>RS, RA, NS, and NA</dt>
-        <dd>A collection of abbreviations for ICMP packet types defined in NDP <xref target="RFC4861"/>.
-          Respectively: Router Solicitation, Router Advertisement, Neighbor Soliciation, and Neighbor Advertisement.</dd>
+        <dd>Respectively: Router Solicitation, Router Advertisement, Neighbor Soliciation, and Neighbor Advertisement.
+          A collection of abbreviations for ICMP packet types defined by NDP <xref target="RFC4861"/>.</dd>
 
         <dt>NUD</dt>
         <dd>Neighbor Unreachability Detection (Section 7.3 of <xref target="RFC4861"/>).</dd>
 
         <dt>LLID</dt>
-        <dd>A shorthand representation for the term "Link Layer Address" or "Link Layer Identifier".
+        <dd>A shorthand representation for the terms "Link Layer Address" or "Link Layer Identifier".
           Both terms are synonymous and describe any individual link-layer identifier for a network interface.</dd>
 
         <dt>IID</dt>
@@ -1341,6 +1342,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
               ]]>
             </artwork>
           </figure>
+          <!-- TODO! POSSIBLE AMENDMENT. Rather than distributing this info in LVs, let hosts choose their own security strength for their generated addresses.
+                This means KDF parameters end up embedded in the generated VBA. -->
           <t>
             The list of default KDF Algorithm Type choices is given below.
           </t>
