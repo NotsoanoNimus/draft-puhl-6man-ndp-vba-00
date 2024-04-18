@@ -501,8 +501,8 @@
               (i.e., links with well-established VBA presence).</dd>
 
             <dt><tt>AGVL - Address Generation &amp; Verification with Levels</tt></dt>
-            <dd>Both address generation and verification procedures are employed, but verification failures <bcp14>MUST</bcp14>
-              NOT be strictly enforced during NDAR. Neighbors whose VBA(s) successfully verify
+            <dd>Both address generation and verification procedures are employed, but verification failures <bcp14>MUST NOT</bcp14>
+              be strictly enforced during NDAR. Neighbors whose VBA(s) successfully verify
               <bcp14>MUST</bcp14> be marked or indicated locally as "Secured". A neighbor who fails to verify a binding
               <bcp14>MUST</bcp14> be indicated as "Unsecured" and given less trust or authority than "Secured" responses. This
               <bcp14>SHOULD</bcp14> be the default IEM on transitionary links (i.e., links undergoing a transition to VBA).</dd>
@@ -2432,7 +2432,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <t>
           Even when using memory-bound KDFs like Argon2d, the proper delegation of baseline algorithm parameters in the LV <bcp14>SHOULD</bcp14> always
           tend toward being more forgiving for low-power or embedded systems. The balance of low compute latencies with high security
-          might be difficult to determine, but implementations <bcp14>SHOULD</bcp14> attmept to discover and apply defaults that achieve this goal as
+          might be difficult to determine, but implementations <bcp14>SHOULD</bcp14> attempt to discover and apply defaults that achieve this goal as
           universally as possible.
         </t>
       </section>
