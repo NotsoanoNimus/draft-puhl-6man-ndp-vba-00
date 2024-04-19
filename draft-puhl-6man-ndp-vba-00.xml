@@ -2252,17 +2252,17 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           <name>Forcing Neighbors Offline</name>
           <t><tt>Nodes who are 'killed' or go offline are impersonated.</tt></t>
           <t>
-            When a node goes offline, there is no consequence for a malicious node spoofing its LLID. This
+            When a node goes off-link, there is no consequence for a malicious node spoofing its LLID. This
             is a problem for this specification and for any other address ownership methodology relying on link-layer address
             bindings. It is indeed where more convoluted solutions relying on asymmetric cryptography, like Cryptographically
             Generated Addresses <xref target="RFC3972"/>, tend to thrive by certifying addresses which are NOT coupled to any
-            attributes on the link layer.
+            attributes on the link layer, and by providing proof of identity through knowledge of a private key value.
           </t>
           <t>
             VBA ownership mechanisms are designed primarily to prevent active, transparent spoofing; that is,
             to stop the interception of traffic between two active links without disrupting traffic between either party.
             As mentioned previously, VBAs do NOT certify LL2IP bindings, and they are based on the principle that two link-layer
-            devices or interfaces CANNOT share the same identifier at the same time. Certifying addresses
+            interfaces on a shared link CANNOT share the same identifier at the same time. Certifying addresses
             or using other monitoring technologies to detect when nodes are 'killed'/spoofed at the link layer are topics
             beyond the scope of this specification.
           </t>
@@ -2273,7 +2273,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             to spoof NC entries and to interfere with NDAR.
           </t>
           <t>
-            To enforce long-term ownership in the face of this link-layer impersonation problem, Neighbor Discovery Sessions
+            To enforce long-term ownership in the face of this link-layer impersonation problem, Neighbor Discovery Session Options
             <xref target="NDSESS"/> can be implemented as a complement to VBAs. See <xref target="future-sessions"/> for a deeper
             exploration of ND Sessions as applied to VBA.
           </t>
@@ -2722,9 +2722,9 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           Networks using SEND can also experience Identity Assumption attacks, but only in the short-term because SEND
           relies on CGAs <xref target="RFC3972"/> to enforce knowledge of a private cryptographic key in ND messages. SEND
           itself declares this problem in Section 9.1 <xref target="RFC3971"/>.
-          When a new request for ND arrives -- such as during the NUD process -- impersonating nodes will not be able to sign
-          ND responses because they do not know the original private key. These concerns are more considerable for VBAs than
-          SEND for this very reason: VBAs do NOT require knowledge of some private value that is publicly verifiable.
+          When a new request for ND arrives -- such as during the NUD process -- impersonating nodes will not be able
+          to sign ND responses because they do not know the original private key. These concerns are more considerable for
+          VBAs than SEND for this very reason: VBAs do NOT require knowledge of some private value that is publicly verifiable.
         </t>
         <t>
           ND Session options <xref target="NDSESS"/> are used to exchange session details using Zero-Knowledge
@@ -2744,8 +2744,9 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           ND Session options <bcp14>MAY</bcp14> be integrated with VBAs, but are not a requirement and in practice will add some
           degree of extra complication to NDAR exchanges. These are again considered a trade-off for allowing ND transactions to
           be guaranteed end-to-end, instead of requiring more complex implementations or other capable network infrastructure be
-          deployed. Because each specification is decoupled from the other, implementations opting to take advantage of their
-          synergies <bcp14>MAY</bcp14> enforce either of the two specifications in their own preferred ordering.
+          deployed. If ND Sessions are deployed alongside VBAs, implementations <bcp14>MUST</bcp14> always verify or enforce the
+          VBA before checking any session options. If a reported binding does not verify according to this specification, it
+          <bcp14>SHOULD NOT</bcp14> affect any sessions, active or not.
         </t>
         <figure anchor="vba-ndsess-synergy">
           <name>Synergy of VBA &amp; NDSOs</name>
@@ -2781,8 +2782,9 @@ Host D:                  v              (2)
 (1) Active ND Session thwarts a malicious Identity Assumption attack.
   (a) Host C forces Host A off the link.
   (b) Host C then assumes the IP and LLID of Host A for interception.
-  (c) Host C does not know the next-in-line ZKPP token, so the NDSO
-       mandates that Host B deny packets after 1 minute without ZKPP.
+  (c) Host C does not know the next-in-line ZKPP token; ND Sessions
+       mandate that Host B deny packets after 1 minute without a
+       valid Session Reachability Confirmation.
 
 (2) VBA denies a bad LLID-to-IP binding and possible on-path attack.
   (x) Host D successfully engages Host B in a ND Session.
