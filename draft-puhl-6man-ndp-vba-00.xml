@@ -1618,7 +1618,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
               optimizations.
             </dd>
             <dt>Reserved</dt>
-	    <dd>15 bits of space reserved for future use. This value <bcp14>MUST</bcp14> be initialized to 0 by senders and <bcp14>MUST</bcp14>
+            <dd>15 bits of space reserved for future use. This value <bcp14>MUST</bcp14> be initialized to 0 by senders and <bcp14>MUST</bcp14>
               be ignored by receivers.</dd>
             <dt>Timestamp</dt>
             <dd>
