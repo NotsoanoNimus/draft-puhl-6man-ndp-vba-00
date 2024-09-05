@@ -32,8 +32,8 @@
           <region>Michigan</region>
           <country>US</country>
         </postal>
-        <email>zpuhl@xmit.xyz</email>  
-        <email>zpuhl@umich.edu</email>  
+        <email>zpuhl@xmit.xyz</email>
+        <email>zpuhl@umich.edu</email>
         <uri>https://xmit.xyz/</uri>
       </address>
     </author>
@@ -110,7 +110,7 @@
         SEND <xref target="RFC3971"/>, CGAs <xref target="RFC3972"/>, and opaque IIDs
         <xref target="RFC7217"/>, and it does not intend to obsolete or update any other document.
       </t>
-      
+
       <section anchor="intro-requirements">
         <name>Specification of Requirements</name>
         <t>
@@ -199,7 +199,7 @@
         <dt>VBA</dt>
         <dd>Voucher-Based Addressing. The primary address generation and verification concept introduced by this document.</dd>
 
-        <dt>LV</dt> 
+        <dt>LV</dt>
         <dd>ND Link Voucher option. A data payload intended to be distributed by a responsible node on-link. Details are statefully
           maintained on neighbors and are used in both generating and verifying VBAs.</dd>
 
@@ -295,7 +295,7 @@
             situation that only benefits a threat actor if their objective is to deny service to a target, rather than intercept frames.
             This is not a silent attack vector that can become fruitful without knowledge of the communicating parties.
             More specifically, the threat model for this proposal assumes mitigation of SILENT, TRANSPARENT attacks in which
-            malicious neighbors arbitrate and intercept traffic without knowledge of any parties on the path of communication. 
+            malicious neighbors arbitrate and intercept traffic without knowledge of any parties on the path of communication.
           </t>
           <t>
             During NDAR, the goal is to associate a Target IP with a corresponding LLID to which frames can be forwarded at
@@ -521,7 +521,7 @@
           <t>
             When a handoff completes, the LV for the interface has changed. Any time the stored VoucherID of the active
             LV transitions to another, the interface's non-static Neighbor Cache entries <bcp14>MUST</bcp14> be cleared and all VBAs,
-            whether generated or verified, <bcp14>MUST</bcp14> be derived from the parameters of the newly active LV ONLY. This is 
+            whether generated or verified, <bcp14>MUST</bcp14> be derived from the parameters of the newly active LV ONLY. This is
             true even in the case of a hard handoff.
           </t>
           <t>
@@ -1012,7 +1012,7 @@ COMPUTE & CACHE:
             when an update has not been received. This value <bcp14>MUST</bcp14> be a minimum of 3,600 (1 hour).
           </dd>
           <dt>Reserved</dt>
-          <dd>Space reserved for future use. This value <bcp14>MUST</bcp14> be initialized to 0 by senders and <bcp14>MUST</bcp14> be ignored by receivers.</dd>
+          <dd>64 bits of space reserved for future use. This value <bcp14>MUST</bcp14> be initialized to 0 by senders and <bcp14>MUST</bcp14> be ignored by receivers.</dd>
           <dt>Timestamp</dt>
           <dd>
             A 64-bit value representing the system time of the sender upon sending the option.
@@ -1266,12 +1266,11 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
                 PBKDF2.
               </t>
               <t>
-                This specification explicitly opts to use Argon2d instead of Argon2i or Argon2id because the generation of
-                VBAs does not require any resistance to side-channel attacks. The in-memory data used by the KDF <bcp14>SHOULD NOT</bcp14> be
+                VBA explicitly uses Argon2d instead of Argon2i or Argon2id because address generation
+                does not require any resistance to side-channel attacks. The in-memory data used by the KDF <bcp14>SHOULD NOT</bcp14> be
                 treated as secret for any reason. All implementations with this Type <bcp14>MUST</bcp14> specifically use Argon2d. Implementations
                 <bcp14>SHOULD</bcp14> always prefer to use this Type over others, provided all participating network devices have Argon2d support.
               </t>
-              <!-- TODO! Revise all KDF algorithms by what's in the implementation. -->
               <t>
                 The work factor 'L' value is used as the 't' input for Argon2d computations. The Argon2 't' parameter
                 indicates the number of passes and is used to increase the algorithm's running time regardless of MemorySize.
@@ -1297,8 +1296,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
                     </dd>
                     <dt>MemorySize</dt>
                     <dd>
-                      A 24-bit integer representing the number of kibibytes (KiB) used in the KDF computation. This value <bcp14>SHOULD</bcp14> be
-                      carefully controlled and <bcp14>SHOULD</bcp14> if possible take into consideration the computing resources across the link on
+                      A big-endian 24-bit integer representing the number of kibibytes (KiB) used in the KDF computation. This value <bcp14>SHOULD</bcp14>
+                      be carefully controlled and <bcp14>SHOULD</bcp14> if possible take into consideration the computing resources across the link on
                       which the LV will be distributed. This value <bcp14>MUST</bcp14> be a minimum of <tt>8 &times; Parallelism</tt> and <bcp14>MUST NOT</bcp14>
                       be set to 0. Receivers <bcp14>MUST</bcp14> adjust the minimum MemorySize accordingly if the value does not meet the minimum
                       threshold for the ACTUAL degree of Parallelism being used.
@@ -1311,21 +1310,22 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             <dd>
               <t>
                 The Scrypt KDF algorithm is specified in Section 6 of <xref target="RFC7914"/>. It is a Memory-bound cryptographic
-                function which, similar to Argon2, ideally provides less disparate address computation durations than CPU-bound
-                KDF techniques. 
+                function which, similar to Argon2, ideally provides less disparate address computation costs than CPU-bound
+                KDF techniques.
               </t>
               <t>
-                The iterations count 'L' value is used in part for both the 'N' and 'r' inputs for Scrypt computations. The Scrypt
-                'N' parameter indicates the CPU/Memory cost of running the computation. This value <bcp14>MUST</bcp14> ultimately be a power of 2.
-                The 'r' Scrypt parameter indicates the desired block size. Actual values are computed by the following conversion:
+                The work factor 'L' value is used in parts of the 'N', 'r', and 'p' inputs for Scrypt computations. The Scrypt
+                'N' parameter indicates the CPU/Memory cost of running the computation. This value <bcp14>MUST</bcp14> be a power of 2.
+                The 'r' Scrypt parameter indicates the desired block size (RAM cost). The 'p' parameter indicates the desired degree of
+                parallelization. Actual values are computed by the following conversion:
               </t>
               <t>
-                <tt>r (Parallelism) := MAX{ 16, (L &amp; 0xFF00) &gt;&gt; 4 } &lt;&lt; SCALING_FACTOR</tt><br />
-                <tt>N (Cost) := MAX{ 2, 1 &lt;&lt; (L &amp; 0x00FF) } &lt;&lt; SCALING_FACTOR</tt>
+                <tt>N (Cost) := MAX(1 &lt;&lt; (MIN(11, MAX(1, ((L &amp; 0xFF00) &gt;&gt; 8) / 24))), 2) &lt;&lt; SCALING_FACTOR</tt>
+                <tt>p (Parallelization) := MAX( 1, (L &amp; 0x00F0) )</tt>
+                <tt>r (BlockSize) := MAX{ 1, (L &amp; 0x000F) )</tt><br />
               </t>
               <t>
                 The Scrypt parameter 'dkLen' (derived key length) <bcp14>MUST</bcp14> always be set to 32 and <bcp14>MUST NOT</bcp14> differ between
-                implementations. The Parallelization parameter 'p' <bcp14>MUST</bcp14> always be set to 1 and <bcp14>MUST NOT</bcp14> differ between
                 implementations.
               </t>
               <dl newline="true" spacing="compact">
@@ -1356,10 +1356,10 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
     <section anchor="lovma">
       <name>Local On-link Voucher Multicast Address</name>
       <t>
-        The LOVMA group is defined for the express purpose of sharing non-essential, independent VBA details between participating
-        nodes. All nodes with VBA awareness, regardless of IEM (<xref target="summary-interfaces-mode"/>)
-        are strongly <bcp14>RECOMMENDED</bcp14> to join this group. Nodes are not required nor expected to make practical use of any LOVMA traffic.
-        Current link VBs are always <bcp14>REQUIRED</bcp14> to join the LOVMA channel.
+        The LOVMA group is defined for the express purpose of sharing non-essential, independent VBA details between
+        neighbors. All VBA-capable neighbors are strongly <bcp14>RECOMMENDED</bcp14> to join this group, regardless of
+        their IEM settings. Nodes are not required nor expected to make practical use of any LOVMA traffic.
+        However, current link VBs are always <bcp14>REQUIRED</bcp14> to join the LOVMA channel.
       </t>
       <t>
         This multicast group is located at the IP address <tt>FF02::ABBA</tt>. A helpful mnemonic to remember this address is to
@@ -1368,40 +1368,33 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
       <t>
         The designated UDP port on which all LOVMA data is sent and received is <tt>2196</tt>.
       </t>
-      <t>
-        Senders of LOVMA traffic are <bcp14>REQUIRED</bcp14> to send packets from a link-local VBA bound to the interface being used to communicate
-        on the LOVMA channel.
-      </t>
 
       <section anchor="lovma-constraints">
         <name>Constraints</name>
         <t>
-          When utilizing the LOVMA channel for any purpose, experimental or deployed, implementations <bcp14>MUST</bcp14> regard these constraints:
+          When utilizing the LOVMA channel for any purpose, implementations <bcp14>MUST</bcp14> regard these constraints:
         </t>
         <ul>
-          <li>LOVMA traffic is considered unidirectional. Nodes <bcp14>SHOULD NOT</bcp14> send unicast responses in reply to multicast traffic.
-            This recommended constraint acts to prevent asymmetric traffic volumes and potential denial of service vulnerabilities
-            leveraging the LOVMA.</li>
+          <li>LOVMA messages are considered unidirectional. Neighbors <bcp14>SHOULD NOT</bcp14> send unicast responses in reply to multicast traffic.
+            This recommended constraint prevents asymmetric traffic volumes and any resulting denial-of-service vulnerabilities.</li>
           <li>All LOVMA datagrams <bcp14>MUST</bcp14> be User Datagram Protocol (UDP) <xref target="RFC768"/> packets.</li>
-          <li>VBA-enabled nodes <bcp14>MUST NOT</bcp14> assume that any other VBA-enabled nodes are subscribed to the LOVMA multicast group or
-            receiving any of its related datagrams. However, nodes <bcp14>MUST</bcp14> assume the presence of their current link VB on the LOVMA.</li>
+          <li>VBA-capable neighbors <bcp14>MUST NOT</bcp14> assume that any other VBA-capable nodes are subscribed to the LOVMA multicast group or
+            receiving any of its related datagrams. However, neighbors <bcp14>MAY</bcp14> assume the presence of the current link VB on the LOVMA.</li>
           <li>Subscribing nodes <bcp14>MUST NOT</bcp14> offer any trust of LOVMA packets, unless some datagram verification procedure is explicitly
             declared in the Defined Datagram Type specification.</li>
+          <li>Senders of LOVMA traffic are <bcp14>REQUIRED</bcp14> to send packets from a link-local VBA bound to the sending interface.</li>
         </ul>
       </section>
 
       <section anchor="lovma-packets">
         <name>Defined Datagrams</name>
         <t>
-          This section outlines and formalizes some initial datagrams which should be expected to appear on LOVMA at any time.
-        </t>
-        <t>
-          All packets <bcp14>MUST</bcp14> use a Type-Length-Value (TLV) format. Type is an 8-bit integer identifying the datagram type, Length
+          All LOVMA datagrams <bcp14>MUST</bcp14> use a Type-Length-Value (TLV) format. Type is an 8-bit integer identifying the datagram type, Length
           is an 8-bit integer specifying the length of the packet (including the Type and Length fields) in units of 4 octets,
-          and Value is the following object to be parsed.
+          and Value is the data to be handled.
         </t>
         <t>
-          The Type or Length fields <bcp14>MUST NOT</bcp14> be set to 0. Receivers <bcp14>MUST</bcp14> ignore datagrams with a Type of 0 or a Length of 0.
+          The Type and Length fields <bcp14>MUST NOT</bcp14> be set to 0. Receivers <bcp14>MUST</bcp14> ignore datagrams with a Type of 0 or a Length of 0.
         </t>
         <figure>
           <name>Structure of a LOVMA Datagram</name>
@@ -1421,12 +1414,12 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <section anchor="lovma-packets-vsr">
           <name>Voucher Status Reports (VSRs)</name>
           <t>
-            A node <bcp14>MAY</bcp14> opt to occasionally send VSRs to the LOVMA channel to gratuitously let other nodes know of its presence
-            as a VBA-supporting interface, in addition to a few VBA state-related fields.
+            A node <bcp14>MAY</bcp14> occasionally send VSRs to the LOVMA channel to gratuitously let other nodes know of its presence
+            as a VBA-capable interface, in addition to a few VBA-related status fields.
           </t>
           <t>
-            Sending interfaces are <bcp14>REQUIRED</bcp14> to add their LLID onto VSR packets. This allows receivers to easily
-            identify the sending interface by ID, rather than using the IP Source Address of the datagram to associate the sender
+            Senders are <bcp14>REQUIRED</bcp14> to add their interface LLIDs onto transmitted VSR packets. This allows receivers to easily
+            identify the sending interface by ID, rather than the IP Source Address of the datagram, to associate the sender
             with one of its potentially many on-link IP addresses.
           </t>
           <t>
@@ -1459,8 +1452,24 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             <dt>Length</dt><dd>Variable. The length of the datagram in its totality, rounded up to the nearest 4 octets.</dd>
             <dt>IEM</dt>
             <dd>
-              A 3-bit value identifying the IEM of the sending interface. See <xref target="iem-mappings"/> for a mapping of the possible
-              IEM values. This value <bcp14>MUST</bcp14> be set to the AAD IEM if the sending interface does not have a currently cached, active LV.
+              A 3-bit value identifying the IEM of the sending interface according to the table below.
+              This value <bcp14>MUST</bcp14> be set to the AAD IEM if the sending interface does not have a currently cached, active LV.
+              <table anchor="iem-mappings">
+                <name>IEM Identifier Mappings</name>
+                <thead>
+                  <tr><th>Value</th><th>IEM</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>0</td><td>AAD</td></tr>
+                  <tr><td>1</td><td>AGO</td></tr>
+                  <tr><td>2</td><td>AGV</td></tr>
+                  <tr><td>3</td><td>AGVL</td></tr>
+                  <tr><td>4</td><td>Reserved</td></tr>
+                  <tr><td>5</td><td>Reserved</td></tr>
+                  <tr><td>6</td><td>Reserved</td></tr>
+                  <tr><td>7</td><td>Reserved</td></tr>
+                </tbody>
+              </table>
             </dd>
             <dt>Reserved</dt>
             <dd>Space reserved for future use. This value <bcp14>MUST</bcp14> be initialized to 0 by senders and <bcp14>MUST</bcp14> be ignored by receivers.</dd>
@@ -1471,9 +1480,9 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             </dd>
             <dt>Preferred Iterations Count</dt>
             <dd>
-              Senders <bcp14>MAY</bcp14> use this field to indicate a preferred IC value used consistently when generating
+              Senders <bcp14>MAY</bcp14> use this field to indicate a preferred work factor ('L') value used often when generating
               VBAs within each on-link prefix. Receivers <bcp14>MAY</bcp14> associate this field with the LLID value to preemptively calculate VBAs
-              for the sender when the current LV changes.
+              for the Sender when the current LV changes or transitions.
             </dd>
             <dt>LLID Length</dt><dd>The length in bytes of the LLID field. Stored as a big-endian value.</dd>
             <dt>LLID</dt><dd>A variable-length field containing the sending interface's LLID.</dd>
@@ -1488,19 +1497,20 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <section anchor="lovma-packets-vci">
           <name>Voucher Capability Indications (VCIs)</name>
           <t>
-            A node <bcp14>MAY</bcp14> notify the LOVMA channel about its potential candidacy as a link Voucher Bearer (<xref target="bearers"/>)
-            by sending a VCI datagram. The VCI is an informational packet <bcp14>REQUIRED</bcp14> to be considered for election by the current VB.
+            A node <bcp14>MAY</bcp14> notify the LOVMA channel about its potential candidacy as a Voucher Bearer
+            by sending a VCI datagram. The VCI is an informational datagram <bcp14>REQUIRED</bcp14> to be sent for consideration of
+            election by the current VB.
           </t>
           <t>
-            Receivers are typically intended to be the current VB, but any node <bcp14>MAY</bcp14> make use of VCI details. Nodes <bcp14>MUST NOT</bcp14> consider
+            Receivers are typically intended to be the current VB, but any neighbor <bcp14>MAY</bcp14> make use of VCI details. Neighbors <bcp14>MUST NOT</bcp14> consider
             VCI packets as valid LVs. The current VB <bcp14>MAY</bcp14> maintain a state of unexpired VCI packets, especially when
             it intends to elect a new node responsible for the LV. Current VBs <bcp14>SHOULD NOT</bcp14> elect a new VB without first receiving a
-            VCI datagram indicating the sender's readiness to be elected.
+            VCI datagram indicating the Sender's readiness to be elected.
           </t>
           <t>
-            Sending nodes <bcp14>MUST NOT</bcp14> assume that issuance of a VCI packet is guaranteed to lead to their eventual election as a link VB.
+            Sending nodes <bcp14>MUST NOT</bcp14> assume that issuance of a VCI packet is guaranteed to lead to eventual election as a VB.
             The decision for election by the current VB <bcp14>MUST</bcp14> be indicated by receipt of a signed VHA datagram, whose signature's PublicKey
-            matches that of the current, active LV.
+            matches that of the current, active LV of the VB.
           </t>
           <figure>
             <name>Structure of a VCI Datagram</name>
@@ -1538,8 +1548,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <section anchor="lovma-packets-vha">
           <name>Voucher Handoff Advertisements (VHAs)</name>
           <t>
-            The node responsible for the LV <bcp14>MAY</bcp14> at any time elect a new link VB using the VHA datagram. This 'handoff' communication
-            notifies subscribing VBA-enabled nodes of a change in VB and thus PublicKey information used to sign the new LV. If the signature
+            The node responsible for the LV <bcp14>MAY</bcp14> at any time elect a new VB using the VHA datagram. This handoff communication
+            notifies subscribing VBA-capable nodes of a change in VB and thus the PublicKey information used to sign the new LV. If the signature
             on the VHA is valid, listening nodes <bcp14>MUST</bcp14> accept the start of the handoff process whereby both VoucherID fields become
             temporarily valid for the link.
           </t>
@@ -1548,11 +1558,11 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             ignore the packet. If there is no current LV and a VHA is received, then it <bcp14>MUST</bcp14> be ignored.
           </t>
           <t>
-            The handoff window duration is based on the 'Expiration' value of the current VB's LV packet at the time the VHA is sent.
-            Exceedingly long Expirations will entail exceedingly long handoff windows, and there is no limit to the duration of a handoff.
+            The transition window duration is based on the 'Expiration' value of the current VB's LV at the time the VHA is sent.
+            Exceedingly long Expirations will entail exceedingly long transition windows, and there is no limit to its duration.
             VHA retransmission frequency is variable but is <bcp14>RECOMMENDED</bcp14> to follow the same frequency as the node's previous RA or Redirect
-            issuances. VBs initiating a handoff <bcp14>MUST</bcp14> send at least one VHA notification every 5 seconds for a minimum of 3 minutes OR the
-            length of the 'Expiration' value, whichever is shorter. If the 'Expiration' value is high, nodes handing off VB
+            issuances. VBs initiating a handoff <bcp14>MUST</bcp14> send at least one VHA notification every 5 seconds for a minimum of 3 minutes.
+            If the 'Expiration' value is high, nodes handing off VB
             responsibility <bcp14>MAY</bcp14> choose to stop transmitting VHAs after this minimum threshold has elapsed.
           </t>
           <t>
@@ -1561,19 +1571,18 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           </t>
           <t>
             When the elected node observes the VHA packet granting it VB responsibility, it <bcp14>MUST</bcp14> begin sending gratuitous RAs or
-            Redirects to the link for which it is now a VB. Sending a RA to the local link always follows the receipt of a valid,
+            Redirects to the link for which it is now a VB. Sending an RA to the link always follows the receipt of a valid,
             unexpired VHA from the previous VB. After 2 minutes, the new VB <bcp14>MUST</bcp14> consider the LV parameters (including the PublicKey)
             of the previous VB as invalid, and <bcp14>MUST NOT</bcp14> trigger any more RAs driven by receipt of VHAs from the previous VB.
           </t>
           <t>
             VHAs <bcp14>MUST</bcp14> also be used to indicate a change in active LV details using the 'Refresh' bit. This indicates that
-            the handoff represents a transition between LV parameters from the same VB rather than a change of issuing VBs.
+            the handoff represents a transition between LV parameters from the same VB rather than a change of issuing VB nodes.
             Using the VHA for this purpose affords neighbors enough time to fully transition addresses between varying LV parameters,
             just like in an ordinary election.
           </t>
           <t>
-            See <xref target="summary-interfaces-transitions"/> for more details regarding the handoff process at the per-interface
-            scope.
+            See <xref target="summary-interfaces-transitions"/> for more details regarding the handoff process at the per-interface scope.
           </t>
           <figure>
             <name>Structure of a VHA Datagram</name>
@@ -1609,7 +1618,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
               optimizations.
             </dd>
             <dt>Reserved</dt>
-            <dd>Space reserved for future use. This value <bcp14>MUST</bcp14> be initialized to 0 by senders and <bcp14>MUST</bcp14> be ignored by receivers.</dd>
+	    <dd>15 bits of space reserved for future use. This value <bcp14>MUST</bcp14> be initialized to 0 by senders and <bcp14>MUST</bcp14>
+              be ignored by receivers.</dd>
             <dt>Timestamp</dt>
             <dd>
               <t>The current precise system time encoded as a 64-bit value.</t>
@@ -1624,8 +1634,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             <dt>Signer VoucherID</dt>
             <dd>
               The VoucherID of the active LV which is signing the handoff to the Upcoming VoucherID. Nodes using this ID for their active
-              LV <bcp14>MUST</bcp14> disregard any further advertised LVs with this ID upon receiving this VHA datagram. A receiver <bcp14>MUST</bcp14> ignore this packet
-              if the Signer VoucherID does not represent the active LV held in the cache of its receiving interface.
+              LV <bcp14>MUST</bcp14> disregard any further advertised LVs with this ID upon receiving this VHA datagram. A receiver <bcp14>MUST</bcp14>
+              ignore this packet if the Signer VoucherID does not represent the active LV held in the cache of its receiving interface.
             </dd>
             <dt>Upcoming VoucherID</dt>
             <dd>
@@ -1824,7 +1834,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         </t>
       </section>
     </section>
-    
+
     <section anchor="security">
       <name>Security Considerations</name>
       <t>
@@ -2006,7 +2016,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           <li>
             Consider a situation where Group<sub>A</sub> represents hosts aware of legitimate LV<sub>A</sub> and
             Group<sub>B</sub> represents hosts aware of malicious LV<sub>B</sub>. Having multiple LVs active on the
-            same link will inevitably lead to different logical subnetworks, where Group<sub>A</sub> hosts are 
+            same link will inevitably lead to different logical subnetworks, where Group<sub>A</sub> hosts are
             generating and verifying VBAs according to a completely different LV than Group<sub>B</sub>. Depending
             on per-interface IEMs, hosts from one group will be completely barred from communicating with hosts in
             the other.
@@ -2167,7 +2177,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         </t>
       </section>
     </section>
-    
+
     <section anchor="IANA">
       <name>IANA Considerations</name>
       <t>
@@ -2186,7 +2196,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
       </ul>
       <t>
         The Link Voucher option includes a new option type used to convey KDF algorithm selections.
-        Assigned in the "Algorithm Type Options" subregistry are string identifiers corresponding to integers 
+        Assigned in the "Algorithm Type Options" subregistry are string identifiers corresponding to integers
         which indicate their Algorithm Type values. Future values <bcp14>MUST</bcp14> be assigned according to the Standards
         Action policy of <xref target="RFC8126"/>. Default registrations are defined in this document:
       </t>
