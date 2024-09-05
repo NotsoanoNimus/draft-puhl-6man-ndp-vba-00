@@ -20,10 +20,10 @@
   xml:lang="en"
   consensus="true"
   version="3">
+  <link rel="describedBy" href="https://doi.org/10.3390/network4030016"/>
   <front>
     <title abbrev="ndp-vba">IPv6 Voucher-Based Addressing for Neighbor Discovery Address Resolution</title>
     <seriesInfo name="Internet-Draft" value="draft-puhl-6man-ndp-vba-00"/>
-    <link rel="describedBy" href="https://doi.org/10.3390/network4030016"/>
     <author fullname="Zack Puhl" initials="Z." surname="Puhl">
       <organization>University of Michigan</organization>
       <address>
@@ -391,7 +391,7 @@
 
             <dt><tt>AGO - Address Generation Only</tt></dt>
             <dd>The address generation procedure <bcp14>MUST</bcp14> be used for interface unicast addresses. NDAR <bcp14>MUST NOT</bcp14> be
-              supplemented by VBA optimization or verification procedures.
+              supplemented by VBA optimization or verification procedures.</dd>
 
             <dt><tt>AGV - Address Generation &amp; Verification</tt></dt>
             <dd>The address generation and verification procedures <bcp14>MUST</bcp14> be used. NDAR
@@ -1452,8 +1452,10 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             <dt>Length</dt><dd>Variable. The length of the datagram in its totality, rounded up to the nearest 4 octets.</dd>
             <dt>IEM</dt>
             <dd>
-              A 3-bit value identifying the IEM of the sending interface according to the table below.
-              This value <bcp14>MUST</bcp14> be set to the AAD IEM if the sending interface does not have a currently cached, active LV.
+              <t>
+                A 3-bit value identifying the IEM of the sending interface according to the table below.
+                This value <bcp14>MUST</bcp14> be set to the AAD IEM if the sending interface does not have a currently cached, active LV.
+              </t>
               <table anchor="iem-mappings">
                 <name>IEM Identifier Mappings</name>
                 <thead>
