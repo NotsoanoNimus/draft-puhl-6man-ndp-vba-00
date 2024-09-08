@@ -11,7 +11,7 @@
 
 <rfc
   xmlns:xi="http://www.w3.org/2001/XInclude"
-  category="std"
+  category="exp"
   docName="draft-puhl-6man-ndp-vba-00"
   ipr="trust200902"
   obsoletes=""
@@ -2319,8 +2319,8 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           lieu of a classic link-layer bridge.
         </t>
         <t>
-          Due to link-layer binding, VBA does not support ND proxying in its design unless the proxy is also able to spoof the
-          LLIDs of all the target nodes. These spoofed LLIDs would need to appear on the interface attached to the link that
+          Due to link-layer binding, VBA does not support ND proxying unless the proxy is also able to spoof the
+          LLIDs of all intended target nodes. These spoofed LLIDs would need to appear on the interface attached to the link that
           it must receive and answer ND packets on. One solution to enabling ND proxy while keeping the rest of the network
           secure is to apply the same strategy used for static addressing and create manual cache entries. Another solution
           might be to enable the AVGL IEM on the nodes who are required to transact with the proxy.
