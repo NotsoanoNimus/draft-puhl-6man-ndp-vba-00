@@ -62,15 +62,6 @@
   <middle>
     <section anchor="intro">
       <name>Introduction</name>
-      <!--
-      <t>
-        An on-path attack, historically more well-known as a Man-in-the-Middle (MITM) attack, occurs when a malicious
-        network node uses spoofing techniques to itself into a communication path between two local neighbors, often transparently,
-        in order to arbitrate ongoing communications. This type of weakness is a critical point of concern for local
-        network security, since the high feasibility of spoofing attacks in local networks, where nodes are least likely to
-        encrypt communications, may compromise confidentiality, integrity, and availability.
-      </t>
-      -->
       <t>
         The Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/> is self-aware of its potential for misuse in neighbor spoofing attacks.
         Section 11 of the RFC provides a brief threat analysis followed by pointers to both SEcure Neigbor Discovery (SEND) <xref target="RFC3971"/>,
@@ -78,16 +69,6 @@
         been considered the canonical solution for its namesake (securing ND), it and its complementary Cryptographically
         Generated Addressing (CGA) <xref target="RFC3972"/> have failed to achieve widespread adoption.
       </t>
-      <!--
-      <t>
-        Meanwhile, discussions were had about the best way to generate IP addresses on connected interfaces, for different use-cases, that
-        can preserve user privacy. <xref target="RFC8981"/> discusses the generation of both stable and temporary SLAAC addresses. It
-        slightly augments the generation process of opaque IIDs <xref target="RFC7217"/> and provides insights about more recent address
-        generation methodologies. <xref target="RFC7721"/> and
-        <xref target="RFC8064"/> express deep concerns about using link-layer identifiers in the address generation process, citing network
-        activity correlation, location tracking, address scanning, and targeted exploitation as problematic byproducts.
-      </t>
-      -->
       <t>
         NDP Address Resolution (NDAR; Section 7.2 of <xref target="RFC4861"/>) establishes a process for discovering the
         link-layer identifier (LLID) of a neighbor's IP address. This process faithfully relies on an untrusted neighbor owning the target
@@ -142,6 +123,7 @@
           <li>Cryptographically Generated Addresses (CGA) <xref target="RFC3972"/>.</li>
           <li>Semantically Opaque Interface Identifiers <xref target="RFC7217"/>.</li>
           <li>Temporary Address Extensions for Stateless Address Autoconfiguration in IPv6 <xref target="RFC8981"/>.</li>
+          <li>Security and Privacy Considerations for IPv6 Address Generation Mechanisms <xref target="RFC7721"/>.</li>
           <li>Recommendation on Stable IPv6 Interface Identifiers <xref target="RFC8064"/>.</li>
           <li>PKCS #5: Password-Based Cryptography Specification Version 2.1 <xref target="RFC8018"/> (primarily Sections 3 and 4).</li>
           <li>The Argon2 Key Derivation Function <xref target="RFC9106"/>.</li>
@@ -702,7 +684,7 @@ Formulas:
           or (2) multiple same-link LVs being distributed.
         </t>
         <t>
-          During moment (1), the Client Node <bcp14>MAY</bcp14> choose to attach a SLLAO to its NS message, which will
+          During moment (1), the Client Node <bcp14>MAY</bcp14> choose to attach an SLLAO to its NS message, which will
           cause the Target Node to verify its binding with the IP Sender Address from the NS packet. For more information
           about the 'when' of VBA verification, see <xref target="behavioral-when"/>.
         </t>
@@ -1395,7 +1377,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           The Type and Length fields <bcp14>MUST NOT</bcp14> be set to 0. Receivers <bcp14>MUST</bcp14> ignore datagrams with a Type of 0 or a Length of 0.
         </t>
         <figure>
-          <name>Structure of a LOVMA Datagram</name>
+          <name>Structure of an LOVMA Datagram</name>
           <artwork type="ascii-art" name="lovmaDatagramFormat.txt">
             <![CDATA[
  0                   1                   2                   3
@@ -1478,7 +1460,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
               The ID of the cached, active LV stored for the sending interface. Senders <bcp14>MUST</bcp14> initialize this to 0 if no LV is present
               or if they are operating in the AAD IEM.
             </dd>
-	    <dt>Preferred Work Factor</dt>
+            <dt>Preferred Work Factor</dt>
             <dd>
               Senders <bcp14>MAY</bcp14> use this field to indicate a preferred work factor ('L') value used often when generating
               VBAs within each on-link prefix. Receivers <bcp14>MAY</bcp14> associate this field with the LLID value to preemptively calculate VBAs
@@ -1613,7 +1595,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
             <dt>Length</dt><dd>Variable. The length of the datagram in its totality rounded up to the nearest 4 octets.</dd>
             <dt>R (Refresh Bit)</dt>
             <dd>
-              A single bit. When set to '1', it indicates that the transition is only a LV refresh and does not represent a change of
+              A single bit. When set to '1', it indicates that the transition is only an LV refresh and does not represent a change of
               the link VB to a different node. This field is mostly used for informational purposes and for any implementation-specific
               optimizations.
             </dd>
@@ -1687,7 +1669,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           and appointment from the current VB (see <xref target="lovma-packets-vci"/>). Current VBs wishing to
           transfer LV ownership to another responsible candidate <bcp14>MUST</bcp14> use the LOVMA channel and issue handoffs per the
           election process (see <xref target="lovma-packets-vha"/>). Neighbors <bcp14>MUST NOT</bcp14> be granted VB responsibilities
-          without first announcing their candidacy through valid a LOVMA VCI message.
+          without first announcing their candidacy through valid an LOVMA VCI message.
         </t>
         <t>
           If the current VB is not a router nor responsible for routing subnet traffic, then it <bcp14>MUST</bcp14> distribute the LV via
@@ -1914,7 +1896,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           Notably, this exploration assumes a hypothetical VBA deployment that is using the
           AGV IEM to enact full, strict protections on all address bindings.
           With the context of the design goals of this document, of various ND problem statements (Section 4 of
-          <xref target="RFC3756"/>), and of IPv6 address privacy concerns (<xref target="RFC8064"/>):
+          <xref target="RFC3756"/>), and of IPv6 address privacy concerns (<xref target="RFC8064"/> and <xref target="RFC7721"/>):
           consider how VBA either proposes a resolution for a potential issue or encounters a drawback.
         </t>
 
@@ -1950,7 +1932,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           <name>Tracking Address or Device Activity</name>
           <t><tt>Correlating unicast address activities in the long-term across networks.</tt></t>
           <t>
-            <xref target="RFC8064"/> discusses four primary issues of deriving IP addresses from LLIDs:
+            <xref target="RFC7721"/> discusses four primary issues of deriving IP addresses from LLIDs:
             network activity correlation, location tracking, address scanning, and device-specific vulnerability exploitation.
             The applicability of this discussion, however, only applies to addresses from which any off-link actor might derive
             the LLID directly or somehow become aware of it. VBAs are created using an irreversible hashing function mixed with
