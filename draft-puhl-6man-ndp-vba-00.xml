@@ -47,13 +47,13 @@
     <keyword>privacy</keyword>
     <abstract>
       <t>
-        This document specifies an extensible IPv6 address generation and verification methodology for SLAAC-enabled local
-        networks. Individual link-layer identifiers are bound to sets of deterministic output addresses. NDP Link Voucher options
+        Voucher-Based Addressing is an extensible IPv6 address generation and verification methodology for SLAAC-enabled local
+        networks. Individual link-layer identifiers are bound to sets of deterministic output IP addresses. Neighbor Discovery Link Voucher options
         distributed with Router Advertisement or Redirect messages form a shared consensus between neighbors of the parameters
         used to auto-generate interface addresses. Cryptographic key derivation functions are used to generate pseudo-random addresses
         and to intentionally stretch address computation times. Host-selected parameters can be used to derive any number of both stable
         and ephemeral, privacy-focused addresses for each on-link prefix and at the link-local scope. Neighbors can then verify the
-        link-layer-to-IP bindings during NDP address resolution processes to prevent active NDP spoofing attacks in local networks.
+        link-layer-to-IP bindings during NDP address resolution processes to prevent active neighbor spoofing attacks in local networks.
       </t>
     </abstract>
   </front>
@@ -62,13 +62,15 @@
   <middle>
     <section anchor="intro">
       <name>Introduction</name>
+      <!--
       <t>
         An on-path attack, historically more well-known as a Man-in-the-Middle (MITM) attack, occurs when a malicious
-        network node uses spoofing techniques to itself into a communication path between two local neighbors -- often transparently
-        -- in order to arbitrate ongoing communications. This type of weakness is a critical point of concern for local
+        network node uses spoofing techniques to itself into a communication path between two local neighbors, often transparently,
+        in order to arbitrate ongoing communications. This type of weakness is a critical point of concern for local
         network security, since the high feasibility of spoofing attacks in local networks, where nodes are least likely to
         encrypt communications, may compromise confidentiality, integrity, and availability.
       </t>
+      -->
       <t>
         The Neighbor Discovery Protocol (NDP) <xref target="RFC4861"/> is self-aware of its potential for misuse in neighbor spoofing attacks.
         Section 11 of the RFC provides a brief threat analysis followed by pointers to both SEcure Neigbor Discovery (SEND) <xref target="RFC3971"/>,
@@ -76,6 +78,7 @@
         been considered the canonical solution for its namesake (securing ND), it and its complementary Cryptographically
         Generated Addressing (CGA) <xref target="RFC3972"/> have failed to achieve widespread adoption.
       </t>
+      <!--
       <t>
         Meanwhile, discussions were had about the best way to generate IP addresses on connected interfaces, for different use-cases, that
         can preserve user privacy. <xref target="RFC8981"/> discusses the generation of both stable and temporary SLAAC addresses. It
@@ -84,30 +87,31 @@
         <xref target="RFC8064"/> express deep concerns about using link-layer identifiers in the address generation process, citing network
         activity correlation, location tracking, address scanning, and targeted exploitation as problematic byproducts.
       </t>
+      -->
       <t>
         NDP Address Resolution (NDAR; Section 7.2 of <xref target="RFC4861"/>) establishes a process for discovering the
-        link-layer identifier (LLID) of a neighbor's IP address. But this process faithfully relies on an untrusted neighbor owning the target
+        link-layer identifier (LLID) of a neighbor's IP address. This process faithfully relies on an untrusted neighbor owning the target
         IP to respond with its own LLID (and not, e.g., a malicious neighbor to respond with a redirected LLID).
         If the target IP address is already being directly correlated with an LLID through the NDAR process, it is then sensible to
         tightly bind the two identifiers together: IP addresses should be provably derived from their underlying interface LLID.
-        In light of address-privacy warfare, this binding needs to be formed in a way where temporary and stable identifiers can
-        coexist and not suffer privacy concerns.
+        Maintaining awareness of address privacy concerns, this binding needs to be formed in a way where temporary and stable identifiers can
+        coexist with minimal impacts to pre-established privacy conventions.
       </t>
       <t>
         Voucher-Based Addressing (VBA) offers local IPv6 networks (1) a common procedure for binding LLIDs to IP addresses,
         (2) rotatable and private IP address generation, and (3) prevention of subversive spoofing attacks that lead to network traffic interception.
         Address bindings use mutual key derivation functions to map public input components to deterministic output IP addresses.
-        These bindings can be subsequently verified through the same procedure by neighboring nodes who seek to assert a target's
-        bindings before initiating further communications at higher layers of the network stack. The address generation
+        These bindings can be subsequently verified through the same procedure by neighboring nodes to assert a target's
+        bindings before proceeding with further communications. The address generation
         process creates rotatable IP addresses which appear entirely random to off-link actors, who are by design
         unaware of all input parameters associated with creating the addresses.
       </t>
       <t>
-        This document thus represents a cross-application of cryptographic
+        This document describes a cross-application of cryptographic
         key-stretching techniques and LLID-IP bindings in generating multiple useful, random IPv6 addresses. The result
-        is a high-impact, low-complexity, gradually adoptable, optional feature for the NDAR process,
+        is a high-impact, low-complexity, gradually adoptable, optional amendment to the NDAR process,
         with minimal changes to NDP options, formats, or behaviors. It is proposed as an alternative to
-        SEND <xref target="RFC3971"/>, CGAs <xref target="RFC3972"/>, and opaque IIDs
+        SEND <xref target="RFC3971"/>, CGA <xref target="RFC3972"/>, and opaque IIDs
         <xref target="RFC7217"/>, and it does not intend to obsolete or update any other document.
       </t>
 
@@ -127,7 +131,7 @@
         <name>Background</name>
         <t>
           This document assumes the reader's basic familiarity with the following specifications. These can be referenced
-          in order to provide plenty of helpful context for the concepts proposed in this document.
+          in order to provide plenty of helpful context for the concepts proposed herein.
         </t>
         <ul spacing="compact">
           <li>IP Version 6 Addressing Architecture <xref target="RFC4291"/>.</li>
@@ -151,7 +155,7 @@
       <t>
         To acquire necessary context, please see Section 2.1 of <xref target="RFC4861"/> for definitions of the following
         terms used equivalently in this document: neighbor, node, interface, link, address, router, host, on-link, off-link,
-        IP, ICMP, packet, and target. It is very important to understand these terms before reading this document.
+        IP, ICMP, packet, and target.
       </t>
       <dl newline="true">
         <dt>ND (sometimes NDP)</dt>
@@ -161,7 +165,7 @@
         <dd>SEcure Neighbor Discovery <xref target="RFC3971"/>.</dd>
 
         <dt>CGA</dt>
-        <dd>Cryptographically Generated Address <xref target="RFC3972"/>.</dd>
+        <dd>Cryptographically Generated Addressing <xref target="RFC3972"/>.</dd>
 
         <dt>NDAR</dt>
         <dd>The Neighbor Discovery Address Resolution process; see Section 7.2 of <xref target="RFC4861"/>.</dd>
@@ -204,15 +208,15 @@
           maintained on neighbors and are used in both generating and verifying VBAs.</dd>
 
         <dt>LOVMA</dt>
-        <dd>Local On-link Voucher Multicast Address. A multicast group used by VBA-enabled hosts to get non-essential information from
-          the current Voucher Bearer or from other VBA-enabled neighbors.</dd>
+        <dd>Local On-link Voucher Multicast Address. A multicast group used by VBA-capable hosts to get non-essential information from
+          the current Voucher Bearer or from other VBA-capable neighbors.</dd>
 
         <dt>VB</dt>
         <dd>Voucher Bearer. The on-link node solely responsible for dissemination of the LV and authorized by any potential link
           guarding to transmit Router Advertisements or Redirects with an LV attached.</dd>
 
         <dt>VSR</dt>
-        <dd>Voucher Status Report. A type of data payload sent by VBA-enabled nodes to the LOVMA. Shares information about the node's
+        <dd>Voucher Status Report. A type of data payload sent by VBA-capable nodes to the LOVMA. Shares information about the node's
           VBA preferences. Mainly used in optimizations as an optional protocol feature.</dd>
 
         <dt>VCI</dt>
@@ -231,7 +235,7 @@
 
         <dt>Binding</dt>
         <dd>Used primarily to describe a coupling between two types of addresses on different layers of the network protocol stack.
-          In the case of this document, it often references LL2IP bindings, where Link-Layer Identifiers are 'bound' to one or more
+          In the case of this document, it describes LL2IP bindings, where Link-Layer Identifiers are 'bound' to one or more
           IP addresses.</dd>
 
         <dt>KDF</dt>
@@ -240,11 +244,6 @@
         <dt>Salt</dt>
         <dd>An extra random value used in computing a hash which makes it impossible for attackers to precompute output values.
           See Section 4.1 of <xref target="RFC8018"/> for more information.</dd>
-
-        <dt>IC</dt>
-        <dd>Iterations Count. For the sake of clarity, this term is often not abbreviated in this document. Defined as an integer
-          value representing the amount of times a KDF is iterated to produce a final output value. See Section 4.2 of
-          <xref target="RFC8018"/> for more information. This is also termed the "work factor" value of a VBA.</dd>
 
         <dt>Hextet</dt>
         <dd>A 16-bit aggregation; data that is 16 bits in size.</dd>
@@ -264,7 +263,7 @@
       <t>
         This section outlines the design goals of Voucher-Based Addressing. It reviews the primary mechanisms driving
         the proposal and discusses related requirements for its adoption. It includes concrete processes and procedures used by
-        VBA-enabled network nodes to both verify neighbor bindings and to auto-generate their own VBAs.
+        VBA-capable network nodes to both verify neighbor bindings and to auto-generate their own VBAs.
       </t>
 
       <section anchor="summary-overview">
@@ -286,16 +285,15 @@
             assumption that LLIDs must be unique on the same broadcast domain (link layer) at any given time in order for
             higher-level protocols to successfully operate. Due to this assumption of temporal uniqueness, nodes
             actively using and responding from exchanged LLIDs during NDAR are considered 'owners' of said LLIDs. Therefore,
-            it follows that VBAs can be directly formed and authenticated from this bound 'identity'.
+            it follows that VBAs can be directly formed and authenticated from this 'identity'.
           </t>
           <t>
             Consider the effects of a MAC spoofing attack in an Ethernet LAN, as presented in Section 3.B of <xref target="ETHSEC"/>.
-            Two nodes attempting to use the same LLID on a shared link will typically cause frames to be unreliably delivered and to flip-flop
-            between two different paths in the network's link-layer switching infrastructure. This ultimately begets a
-            situation that only benefits a threat actor if their objective is to deny service to a target, rather than intercept frames.
-            This is not a silent attack vector that can become fruitful without knowledge of the communicating parties.
-            More specifically, the threat model for this proposal assumes mitigation of SILENT, TRANSPARENT attacks in which
-            malicious neighbors arbitrate and intercept traffic without knowledge of any parties on the path of communication.
+            Two nodes attempting to use the same LLID on a shared link will cause frames to be unreliably delivered and to flip-flop
+            between two different paths in the network's link-layer switching infrastructure. This
+            only benefits a threat actor if its objective is to deny service to a target, rather than to intercept or change frames.
+            More specifically, the intended threat model for VBA assumes the presence of SILENT, TRANSPARENT spoofing attacks in which
+            malicious neighbors arbitrate and intercept traffic without the knowledge of any parties on the path of communication.
           </t>
           <t>
             During NDAR, the goal is to associate a Target IP with a corresponding LLID to which frames can be forwarded at
@@ -305,21 +303,21 @@
             for IP addresses that do not produce a legitimate binding, so active neighbor spoofing becomes impossible.
           </t>
           <t>
-            VBA verification is a procedure run by verifying neighbors that mirrors the address generation procedure independently.
+            VBA verification is a procedure run by neighbors which mirrors the address generation procedure independently.
             Verification is parameterized by (1) data which identifies the target node during NDAR (IP address and LLID), and (2) data
             which lies outside of the generating node's administration. Such 'outside' information is found within the Link Voucher
-            details that all neighbors are expected to know.
+            details that all VBA-capable neighbors are expected to know when performing verifications.
           </t>
         </section>
 
         <section anchor="summary-overview-cryptography">
           <name>Key Derivation Functions &amp; Address Privacy</name>
           <t>
-            Link-layer bindings using a simple embedding or hashing scheme should suffice if the goals of VBAs stopped at
-            address ownership. For example, modified EUI-64 interface identifiers are formed by a long-established address
+            Link-layer bindings using a simple embedding or hashing scheme should suffice if the goals of VBA were only binding verification.
+            For example, modified EUI-64 interface identifiers are formed by a long-established address
             derivation methodology which uses the LLID of an underlying interface; see Section 2.5.1 of
-            <xref target="RFC4291"/>. But a design goal of this document is to also establish a
-            privacy-focused address generation procedure which will obscure the node's LLID, while also permitting rotatable
+            <xref target="RFC4291"/>. These could be used to confirm and fulfill the same purpose. But a design goal of VBA is to also establish a
+            privacy-focused address generation procedure which will obscure the node's LLID while permitting rotatable
             addresses. EUI-64 is by design a rudimentary address derivation methodology which does not permit such flexibility.
           </t>
           <t>
@@ -336,7 +334,7 @@
             privacy of the address.
           </t>
           <t>
-            VBAs strike a careful balance of (1) keeping off-link nodes unaware of local LV information used in
+            VBA strikes a careful balance of (1) keeping off-link nodes unaware of local LV information used in
             address derivation, and (2) ensuring on-link nodes are indeed aware of all parameters used to generate an address.
             Off-link actors cannot possibly know the VBA's bound LLID because they cannot receive ND messages,
             nor can they determine it from the address itself: VBAs will always appear as random as a consequence of
@@ -345,18 +343,18 @@
           <t>
             More to the point, VBA elevates use of simple hashing to use of key derivation functions (KDFs), which allow a set of
             one-to-many LL2IP bindings. This is because KDFs accept work factor values specifying how many times the pseudo-random
-            function or underlying hash function must be iterated <xref target="RFC8018"/>. KDFs are computed with various inputs
-            that specifically identify a neighbor, and the result of the KDF is planted into its generated VBA(s). Work factor selections
-            can then be embedded into resultant IPs adjacent to KDF outputs such that the following three components are an inherent value
-            exchanged in any NDAR transaction:
+            function or underlying hash function must be iterated <xref target="RFC8018"/> to produce a final result. VBA computes KDFs with various inputs
+            that specifically identify a neighbor's on-link interface, and the result of the KDF is planted into its generated VBA(s). Work factor selections
+            are embedded into resultant IPs adjacent to their KDF outputs, such that the following three components are an inherent value
+            always exchanged by an NDAR transaction:
           </t>
           <ul spacing="compact">
-            <li>The target's Link-Layer Address and IP address (VBA).</li>
-            <li>A portion of the KDF's hash output (present in the VBA).</li>
-            <li>The work factor used when computing the KDF hash (also present in the VBA).</li>
+            <li>The target's Link-Layer Address (LLID) and IP address (VBA).</li>
+            <li>A portion of the KDF's hash output (present within the VBA).</li>
+            <li>The work factor used when computing the KDF hash (also present within the VBA).</li>
           </ul>
           <t>
-            Interfaces using this generation process therefore enforce that all three items are bound together and conveyed to verifiers -- who
+            Interfaces using this generation process therefore enforce that all three items are mixed together and conveyed to verifiers -- who
             must also be aware of current Link Voucher details -- to produce the same output VBA. Each increment or decrement of the embedded
             work factor value produces an entirely new, seemingly random address with almost no correlation to the previous one.
           </t>
@@ -364,10 +362,10 @@
       </section>
 
       <section anchor="summary-interfaces">
-        <name>Interface-level Processes &amp; Configurations</name>
+        <name>Interface Configurations &amp; States</name>
         <t>
           This section outlines different interface-level configurations and options which <bcp14>MUST</bcp14> be available in
-          any implementation of this proposal. It also discusses topics specific to caching LV information on local interfaces
+          any implementation of VBA. It also discusses topics specific to caching LV information on local interfaces
           and outlines some specific details of the process.
         </t>
         <t>
@@ -378,7 +376,7 @@
           <name>Interface Enforcement Modes</name>
           <t>
             Per-interface modes (IEMs) are able to granularly dictate VBA behaviors.
-            Flexibility in per-interface decision-making grants VBA a higher degree of adaptability.
+            Flexibility in per-interface decision-making grants VBA a higher degree of flexibility with neighbors and adaptability in mixed networks.
             Implementations <bcp14>MUST</bcp14> allow nodes to independently opt into any one of the following IEMs
             for each local interface.
           </t>
@@ -416,9 +414,9 @@
           <t>
             Regardless of their current IEM settings, VBA-capable interfaces are <bcp14>REQUIRED</bcp14> to store the full state of the
             most current, validated Link Voucher. If an LV is not available on-link, then no stored LV state is
-            required and the node <bcp14>MUST</bcp14> enter the Address Awareness Disabled state. If a LV subsequently becomes
-            available, the node <bcp14>MAY</bcp14> choose to enter a different state or IEM based on the implementation (and if
-            the AAD IEM is not manually or explicitly set on the interface).
+            required and the node <bcp14>MUST</bcp14> enter the Address Awareness Disabled state. If an LV subsequently becomes
+            available, then the node <bcp14>MAY</bcp14> choose to enter a different IEM based on the implementation (and whether
+            the AAD IEM is manually set on the interface).
           </t>
           <t>
             LV details <bcp14>MAY</bcp14> also be set statically on an interface. In such cases, the static information
@@ -528,7 +526,7 @@
             The handoff and transition window provides an opportunity for optimization. If neighbors are aware of the
             upcoming LV, then they <bcp14>MAY</bcp14> preemptively generate new interface VBAs in anticipation of the completed
             transition. Implementations <bcp14>MAY</bcp14> also choose to utilize this transition window for preemptive VBA
-            verification of already-cached neighbors who advertise a Preferred Iterations Count specified in LOVMA VSR packets.
+            verification of already-cached neighbors who advertise a Preferred Work Factor specified in LOVMA VSR packets.
           </t>
           <t>
             Finally, if the current node responsible for the LV either disconnects from the network or lets its LV
@@ -584,9 +582,9 @@ Formulas:
           <li>
             <t>
               A 16-bit 'Z' value, calculated as a bitwise complement of the XOR of the 16-bit 'L' value and the first hextet
-              of the LV seed. This calculation uses this XOR computation to ensure the same iterations count 'L' between
+              of the LV seed. This calculation uses this XOR computation to ensure the same work factor 'L' between
               different LV seeds will be unique and provide some resistance to tracking hosts between each varying LV
-              seed. This is especially true if the node indicates a Preferred Iterations Count (<xref target="lovma-packets-vsr"/>).
+              seed. This is especially true if the node indicates a Preferred Work Factor value (<xref target="lovma-packets-vsr"/>).
             </t>
             <ul>
               <li>
@@ -704,7 +702,7 @@ Formulas:
           or (2) multiple same-link LVs being distributed.
         </t>
         <t>
-          During Moment (1), the Client Node <bcp14>MAY</bcp14> choose to attach a SLLAO to its NS message, which will
+          During moment (1), the Client Node <bcp14>MAY</bcp14> choose to attach a SLLAO to its NS message, which will
           cause the Target Node to verify its binding with the IP Sender Address from the NS packet. For more information
           about the 'when' of VBA verification, see <xref target="behavioral-when"/>.
         </t>
@@ -831,7 +829,7 @@ Formulas:
             When a new LV is accepted and cached, whether by a transition or due to the absence of a current LV, any current
             NC entries (especially busy or recent ones) <bcp14>MAY</bcp14> have their LLIDs pre-computed into the new resultant VBAs that
             derive from the new LV's parameters. This can occur even if no NDAR messages have been exchanged with those neighbors yet.
-            This process necessitates that the pre-computing party knows a neighbor's Preferred Iterations Count specified on the LOVMA channel.
+            This process necessitates that the pre-computing party knows a neighbor's Preferred Work Factor specified on the LOVMA channel.
             This allows communications with select neighbors to immediately resume without any potential delays incurred by the VBA
             verification shim. It is left to the discretion of each implementation to apply this optimization where feasible.
           </t>
@@ -947,7 +945,7 @@ COMPUTE & CACHE:
           </t>
           <t>
             Nodes encountering a duplicate address will by necessity require a different work factor value to
-            generate their current address. If the node advertises a Preferred Iterations Count, then it is <bcp14>RECOMMENDED</bcp14>
+            generate their current address. If the node advertises a Preferred Work Factor then it is <bcp14>RECOMMENDED</bcp14>
             that it send a gratuitous VSR update to the LOVMA channel with the new value (<xref target="lovma-packets-vsr"/>).
           </t>
           <t>
@@ -1438,7 +1436,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   |                        32-bit VoucherID                       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Pref. Iterations Count    |          LLID Length          |
+  |       Pref. Work Factor       |          LLID Length          |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   >                              LLID                             <
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1480,7 +1478,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
               The ID of the cached, active LV stored for the sending interface. Senders <bcp14>MUST</bcp14> initialize this to 0 if no LV is present
               or if they are operating in the AAD IEM.
             </dd>
-            <dt>Preferred Iterations Count</dt>
+	    <dt>Preferred Work Factor</dt>
             <dd>
               Senders <bcp14>MAY</bcp14> use this field to indicate a preferred work factor ('L') value used often when generating
               VBAs within each on-link prefix. Receivers <bcp14>MAY</bcp14> associate this field with the LLID value to preemptively calculate VBAs
@@ -1970,10 +1968,10 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
           <name>Forcing Neighbors Offline</name>
           <t><tt>Nodes who are 'killed' or go offline are impersonated.</tt></t>
           <t>
-            When a node goes off-link, there is no consequence for a malicious node spoofing its LLID. Since VBA assumes an
+            When a node goes off-link, there is no consequence for a malicious node spoofing its LLID. Since the VBA threat model assumes an
             insecure link-layer, this remains a persistent problem. VBA is designed primarily to prevent active, transparent spoofing;
-            that is, the quiet arbitration of data between two active neighbors without disrupting messages between either party.
-            VBA does not employ PKI to certify LL2IP bindings -- rather, it hinges on the principle that two link-layer
+            that is, the quiet arbitration of data between two active neighbors without intercepting or disrupting messages between either party.
+            VBA does not employ PKI to certify LL2IP bindings; rather, it hinges on the principle that two link-layer
             interfaces on a shared link cannot share the same identifier at the same time without causing noticeable network disruptions.
           </t>
         </section>
@@ -2306,7 +2304,7 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <t>
           One notable change of generating VBAs server-side is the lack of an ability for client nodes to dynamically self-determine a
           work factor. Allowing nodes to choose their own work factor values affords them
-          the ability to (1) randomize it according to their own decision-making processes and (2) preserve a Preferred Iterations Count (see
+          the ability to (1) randomize it according to their own decision-making processes and (2) preserve a Preferred Work Factor (see
           <xref target="lovma-packets-vsr"/> about VSRs). In a future proposal, DHCP client options might be amended to allow
           a client to request a certain 'security level' as a work factor value. Such an option could also present an opportunity
           to exchange other information about client preferences or other important VBA details.
@@ -2337,14 +2335,14 @@ ECDSA-Sig-Value  ::=  SEQUENCE  {
         <name>Certifying Link Vouchers</name>
         <t>
           Link Vouchers are susceptible to impersonation despite the use of asymmetric cryptography in signing their
-          details. Once a host becomes aware of a valid public-key and signature, it becomes 'locked' to this key (see <xref target="TOFU"/> authentication) and
+          details. Once a host becomes aware of a valid public-key and signature, it becomes 'locked' to this key and
           will not accept LVs from senders NOT using it in their signatures (unless the current LV expires or a VHA is
           issued). However, the point of first contact between a legitimate, authorized VB and its neighbors is still vulnerable.
           This is because any malicious neighbor could craft its own LV and advertise it if it is not first blocked by
           infrastructure-based solutions like RA-Guard.
         </t>
         <t>
-          Section 6 of <xref target="RFC3971"/> dictates the use of Public Key Infrastructure to ensure communication
+          Section 6 of <xref target="RFC3971"/> dictates the use of a Public Key Infrastructure (PKI) to ensure communication
           is genuine between hosts and routers, and that each router is authorized to provide router information. Trust
           anchors are used to determine whether a certificate presented by a router validates its role in SEND: if the
           router presents a certificate that is trusted by the anchor, then neighbors sharing the same trust anchor
