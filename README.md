@@ -1,11 +1,13 @@
-# Voucher-Based Addressing Internet Draft
+# Voucher-Based Addressing Internet Drafts
 This repository holds an IETF Internet Draft attempting to formalize [some research I've done](https://doi.org/10.3390/network4030016) on mitigating IPv6 neighbor spoofing techniques.
 
 The commit history for this project actually represents the original development of my Master's Thesis idea with the University of Michigan-Dearborn.
 
 
 ## Draft Link
-You can find the most current published I-D [here](https://xmit.xyz/).
+~~You can find the most current published I-D [here](https://xmit.xyz/).~~
+
+Please hold...
 
 
 ## Extra
