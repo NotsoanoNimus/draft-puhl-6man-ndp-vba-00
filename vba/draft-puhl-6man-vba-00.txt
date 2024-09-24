@@ -1,0 +1,1792 @@
+
+
+
+
+IPv6 Maintenance                                                 Z. Puhl
+Internet-Draft                                    University of Michigan
+Updates: 4862 (if approved)                                    J. Duncan
+Intended status: Standards Track                        Tachyon Dynamics
+Expires: 28 March 2025                                 24 September 2024
+
+
+               IPv6 Voucher-Based Addressing During SLAAC
+                         draft-puhl-6man-vba-00
+
+Abstract
+
+   Voucher-Based Addressing updates the SLAAC process (RFC4862) with a
+   new, extensible IPv6 address generation and verification methodology.
+   A "voucher" is distributed to nodes on a local link to provide local-
+   scope generation instructions.  Nodes use these instructions, their
+   own link-layer identifiers, and self-determined work factor values to
+   create sets of pseudo-random, deterministic addresses for each on-
+   link prefix.  This process is driven by cryptographic key derivation
+   functions which intentionally lengthen address computation times.
+   Each output address is bound to its inputs by hashing, with binding
+   details being verifiable by neighbors while simultaneously appearing
+   random to off-link parties.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 28 March 2025.
+
+Copyright Notice
+
+   Copyright (c) 2024 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 1]
+
+Internet-Draft                     vba                    September 2024
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Specification of Requirements . . . . . . . . . . . . . .   3
+     1.2.  Background  . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   3.  Voucher-Based Addressing  . . . . . . . . . . . . . . . . . .   5
+     3.1.  Design  . . . . . . . . . . . . . . . . . . . . . . . . .   5
+       3.1.1.  Link-Layer Address Bindings . . . . . . . . . . . . .   5
+       3.1.2.  Hash Function Selection & Ephemeral Addressing  . . .   6
+     3.2.  Address Generation  . . . . . . . . . . . . . . . . . . .   7
+     3.3.  Address Verification  . . . . . . . . . . . . . . . . . .   8
+     3.4.  Preserving Link Voucher State . . . . . . . . . . . . . .   8
+     3.5.  Link Voucher Acquisitions . . . . . . . . . . . . . . . .   9
+     3.6.  Link Voucher Transitions  . . . . . . . . . . . . . . . .   9
+     3.7.  Duplicate Address Detection . . . . . . . . . . . . . . .  11
+   4.  The Link Voucher Option . . . . . . . . . . . . . . . . . . .  12
+     4.1.  Processing Rules for Senders  . . . . . . . . . . . . . .  15
+     4.2.  Processing Rules for Receivers  . . . . . . . . . . . . .  16
+     4.3.  The Algorithm Type Field  . . . . . . . . . . . . . . . .  16
+   5.  Local On-link Voucher Multicast Address . . . . . . . . . . .  19
+     5.1.  Constraints . . . . . . . . . . . . . . . . . . . . . . .  19
+     5.2.  Message Types . . . . . . . . . . . . . . . . . . . . . .  20
+       5.2.1.  Voucher Capability Indications (VCIs) . . . . . . . .  20
+       5.2.2.  Voucher Handoff Advertisements (VHAs) . . . . . . . .  21
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .  24
+     6.1.  Collision Resistance & Time-Memory Tradeoffs  . . . . . .  24
+     6.2.  Employing RA-Guard  . . . . . . . . . . . . . . . . . . .  25
+     6.3.  Hijacking or Desynchronizing Link Vouchers  . . . . . . .  25
+     6.4.  Voucher Rotation Intervals  . . . . . . . . . . . . . . .  26
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  26
+   8.  Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  28
+     8.1.  Deployments using DHCP  . . . . . . . . . . . . . . . . .  28
+     8.2.  Certifying Link Vouchers  . . . . . . . . . . . . . . . .  29
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  29
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  29
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .  29
+   Appendix A.  Code Snippets  . . . . . . . . . . . . . . . . . . .  32
+   Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . .  32
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 2]
+
+Internet-Draft                     vba                    September 2024
+
+
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  32
+
+1.  Introduction
+
+   Voucher-Based Addressing (VBA) offers local IPv6 networks both a
+   common procedure for binding Link-Layer Identifers (LLID) to IP
+   addresses, as well as privacy-focused IP address autoconfiguration
+   for both stable and ephemeral addresses.  The usefulness of the
+   former is expressed in Neighbor Discovery Protocol (NDP)
+   transactions, which resolve LLIDs corresponding to queried IP
+   addresses.  The usefulness of the latter is articulated well in
+   specifications like [RFC7217], [RFC7721], [RFC8064], and [RFC8981].
+
+   This document intends to update [RFC4862] to introduce a new address
+   assignment methodology.  It describes an application of cryptographic
+   key-stretching techniques and link-local configuration distribution
+   to the IPv6 SLAAC process ([RFC4862]), creating a many-to-one
+   relationship between an interface's IP addresses and its underlying
+   LLID.  This relationship is created in such a way that only neighbors
+   on the same broadcast domain can confirm its validity, and external
+   actors will be unaware of its existence entirely.
+
+1.1.  Specification of Requirements
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+1.2.  Background
+
+   This document assumes the reader's basic familiarity with the
+   following specifications.
+
+   *  IP Version 6 Addressing Architecture [RFC4291].
+   *  IPv6 Stateless Address Autoconfiguration [RFC4862].
+   *  Semantically Opaque Interface Identifiers [RFC7217].
+   *  Security and Privacy Considerations for IPv6 Address Generation
+      Mechanisms [RFC7721].
+   *  Recommendation on Stable IPv6 Interface Identifiers [RFC8064].
+   *  Temporary Address Extensions for Stateless Address
+      Autoconfiguration in IPv6 [RFC8981].
+   *  PKCS #5: Password-Based Cryptography Specification Version 2.1
+      [RFC8018] (primarily Sections 3 and 4).
+   *  The Argon2 Key Derivation Function [RFC9106].
+   *  The Scrypt Key Derivation Function [RFC7914].
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 3]
+
+Internet-Draft                     vba                    September 2024
+
+
+2.  Terminology
+
+   To acquire necessary context, please see Section 2.1 of [RFC4861] for
+   definitions of the following terms used equivalently in this
+   document: neighbor, node, interface, link, address, router, host, on-
+   link, off-link, IP, ICMP, packet, and target.
+
+   VBA
+      Voucher-Based Addressing.  The primary address generation and
+      verification concept introduced by this document.
+
+   LLID
+      A shorthand representation for the terms "Link Layer Address" or
+      "Link Layer Identifier".  Both terms are synonymous and describe
+      any individual link-layer identifier for a connected network
+      interface.
+
+   SLAAC
+      Stateless Address Autoconfiguration [RFC4862].
+
+   ND(P)
+      Neighbor Discovery (Protocol) [RFC4861].
+
+   RS, RA, NS, and NA
+      Respectively: Router Solicitation, Router Advertisement, Neighbor
+      Soliciation, and Neighbor Advertisement.  A collection of
+      abbreviations for ICMP packet types defined by NDP in [RFC4861].
+
+   DAD
+      Duplicate Address Detection (Section 5.4 of [RFC4862]).
+
+   LV
+      Link Voucher.  A data payload disseminated at the link-local scope
+      by a Voucher Bearer, containing instructions for assigning
+      interface SLAAC addresses.
+
+   VB
+      Voucher Bearer.  The on-link node solely responsible for
+      dissemination of Link Vouchers.
+
+   LOVMA
+      Local On-link Voucher Multicast Address.  A multicast group used
+      by VBA-capable hosts to get non-essential information from
+      neighbors or the current Voucher Bearer.
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 4]
+
+Internet-Draft                     vba                    September 2024
+
+
+   VHA
+      Voucher Handoff Advertisement.  A type of data payload sent by the
+      VB to the LOVMA, signing off on an election process for new LV
+      parameters and/or a new link VB.
+
+   KDF
+      Key Derivation Function, as defined in Section 3 of [RFC8018].
+
+   Hextet
+      A 16-bit aggregation; data that is 16 bits in size.
+
+   RA-Guard
+      The Router Advertisement Guard mechanism, as specified in
+      [RFC6105].
+
+   NOTE: Any use of the terms 'IP', 'DHCP', or 'ICMP' in the following
+   sections of this document are synonymous with 'IPv6', 'DHCPv6', and
+   'ICMPv6', respectively.  When referencing the IPv4-based versions of
+   these protocols, it will be explicitly noted.
+
+3.  Voucher-Based Addressing
+
+   This section outlines the design goals of Voucher-Based Addressing.
+   It reviews the primary mechanisms driving the proposal and discusses
+   related requirements for its adoption.  It includes concrete
+   processes and procedures used by VBA-capable network nodes to both
+   verify neighbor bindings and to auto-generate their own VBAs.
+
+3.1.  Design
+
+   A Voucher-Based Address is defined as any unicast IP address derived
+   from a hashed combination of known voucher information, a subnet
+   prefix, a work factor selection, and a bound LLID.  The address
+   derivation process is underpinned by a deterministic procedure
+   parameterized by these values.  This same derivation procedure is
+   employed independently by neighbors to verify purported address
+   bindings.
+
+3.1.1.  Link-Layer Address Bindings
+
+   Voucher-Based Addresses are generated by using the LLID of the
+   underlying, assigned interface as a partial input.  VBA assumes that
+   LLIDs must be unique to a single node on the same broadcast domain at
+   any given time in order for higher-level protocols to successfully
+   operate.  Due to this assumption of temporal uniqueness, any node
+   actively occupying an LLID on-link is considered the 'owner' of its
+   LLID.  Therefore, VBAs can be directly formed and authenticated from
+   this 'identity'.
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 5]
+
+Internet-Draft                     vba                    September 2024
+
+
+   This new 'identity' becomes instrumental when neighbors must resolve
+   an IP address (or set of them) to a valid LLID.  For example, during
+   Neighbor Discovery Address Resolution, the goal is to associate a
+   Target IP with a corresponding LLID to which frames can be forwarded
+   at the link layer (see Section 7.2 of [RFC4861]).  Because VBAs are
+   bound to (i.e., derived from) an LLID, neighbors can directly verify
+   any LLID received during NDP transactions to confirm whether the
+   target IP address deterministically descends from it.  This becomes a
+   simplistic way to detect address spoofing attacks.
+
+3.1.2.  Hash Function Selection & Ephemeral Addressing
+
+   Binding LLIDs to IPs by using a simple embedding or hashing scheme
+   would suffice if VBA were only for binding verification.  For
+   example, modified EUI-64 interface identifiers use a long-established
+   address derivation methodology that incorporates the LLID of an
+   underlying interface (Section 2.5.1 of [RFC4291]).  While these may
+   provide LLID bindings, VBA augments this concept to enforce a
+   privacy-focused address generation technique, obscuring the node's
+   LLID while also encouraging ephemeral addressing.  VBA employs
+   hashing during the address generation process to create pseudo-random
+   addresses.  A hash-based address forbids outside trackers from
+   determining the original LLID of the node and also ensures that any
+   input LLID of arbitrary length can be deterministically reduced to an
+   IP address suffix that is fixed at 64 bits in length.
+
+   A known "voucher" holds certain values that are also used as a
+   component of the hash function's input.  VBA strikes a careful
+   balance of hiding any voucher information from off-link nodes while
+   ensuring voucher visibility to on-link nodes.  Off-link actors thus
+   cannot acquire the VBA's bound LLID because they do not know the
+   details of the voucher used to generate them, nor can they compute
+   the LLID from the address itself.  Generated VBAs will always appear
+   to be randomly assigned, with little pattern between selected work
+   factors and vouchers.
+
+   Because hashing would only produce a one-to-one LLID-to-IP binding,
+   this document elevates the use of simple hashing for SLAAC address
+   generation to the use of Key Derivation Functions (KDFs).  These
+   beget a set of one-to-many LL2IP bindings, since KDFs can accept work
+   factor values specifying how many times the pseudo-random function or
+   underlying hash function must be iterated [RFC8018].  VBA computes
+   KDFs with various inputs that specifically identify a neighbor's on-
+   link interface, and the result of the KDF is planted into its
+   generated VBA(s).  Work factor selections are embedded into resultant
+   IPs adjacent to KDF outputs, such that the following three components
+   are inherent to any generated VBA:
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 6]
+
+Internet-Draft                     vba                    September 2024
+
+
+   *  The interface's Link-Layer Address (LLID).
+   *  A portion of the KDF's hash output.
+   *  The work factor used when computing the KDF hash.
+
+3.2.  Address Generation
+
+   This section discusses VBA composition and the VBA generation
+   procedure.
+
+   Address composition:
+             PREFIX    //      SUFFIX (64 bits)
+       +------ ~ ------+-------------+---------------------+
+       | 64-bit prefix | Z (16 bits) |     H (48 bits)     |
+       +------ ~ ------+-------------+---------------------+
+
+     where:
+       PREFIX is the 64-bit subnet prefix. If the subnet length is
+                 shorter than 64 bits, then the rest of the 64-bit
+                 field MUST be initialized to a pseudo-random value.
+       SUFFIX is the first 8 bytes from the result of a Key Derivation
+                 Function 'K' iterated 'L' times. The leftmost hextet
+                 is replaced by 'Z'.
+
+   Formulas:
+       H  =  K(L, Key, Salt)
+             |---> K    = A KDF explicitly specified by a voucher.
+             |---> L    = A node-selected KDF work factor.
+             |---> Key  = The 128-bit voucher seed value.
+             `---> Salt = [LLID] || 'v' || 'b' || 'a' || [PREFIX]
+
+                             (where '||' represents concatenation)
+
+       Z  =  ~(L ^ Key[0..1])
+
+       SUFFIX = hextets{ Z, H[2..3], H[4..5], H[6..7] }
+                               `--> (using 0-based indexing)
+
+          Figure 1: The Voucher-Based Address Generation Procedure
+
+   The VBA SUFFIX embeds two necessary details for its verification:
+
+   *  A 16-bit 'Z' value, calculated as a bitwise complement of the XOR
+      of the 16-bit 'L' value and the first hextet of the interface's
+      current LV seed.  This calculation uses an XOR operation to ensure
+      that the same work factor 'L' between different LV seeds will be
+      unique.  This provides some resistance to tracking if a node
+      chooses to consistently use the same work factor value.
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 7]
+
+Internet-Draft                     vba                    September 2024
+
+
+      -  The work factor, or 'L' value, controls how many times the KDF
+         'K' is iterated to produce the resulting hash 'H'.  Increasing
+         this value increases the work required to generate and verify a
+         VBA, as well as the cost of finding its potential collisions.
+
+   *  48 bits from the resulting hash, or 'H' value, derived from the
+      KDF after 'L' iterations.  Implementations are REQUIRED to use the
+      FIRST 8 bytes of the hash when formulating the SUFFIX value,
+      replacing the hash's first hextet with the 'Z' value.
+
+3.3.  Address Verification
+
+   "Verification" of an address can occur whenever a node would like to
+   confirm the validity and currency of an IP address according both the
+   current Link Voucher and the neighbor's purported LLID.  One example
+   of where this process might be useful is during the NDP address
+   resolution process, where an LLID is returned by a neighbor in an
+   answer to a solicitation of an IP address' link-layer location.
+
+   Address verification uses public information to locally reconstruct
+   VBA(s) with the address generation algorithm.  This known information
+   includes any neighbor's IP (VBA), their LLID, and the locally stored
+   voucher.  The work factor used to compute the address can be
+   extracted from the VBA using all known information, explained by the
+   function Z' below.  If the locally reconstructed VBA does not exactly
+   equal the neighbor's VBA, then the bindings between the current LV,
+   the IP address, the purported LLID, and the work factor MUST be
+   considered invalid.
+
+   Z'(B, LV) = ~(B[8..9] ^ LV.seed[0..1])
+      Calculates the original work factor 'L' from the given VBA 'B'.
+      The value 'B[8..9]' is equal to bytes 9 and 10 (bits 64-79,
+      inclusive) of 'B'.  The 'LV' represents the locally-stored Link
+      Voucher on the verifying host, and 'seed[0..1]' is the first
+      hextet of the LV's seed value.
+
+3.4.  Preserving Link Voucher State
+
+   VBA-capable interfaces are REQUIRED to store the full state of the
+   most current, validated Link Voucher whenever one's presence is
+   detected.  This MUST occur even if the node does not intend to use
+   VBA address generation or verification.  If no LV is available, then
+   no stored LV state is maintained and the node MUST fall back to
+   another temporary method to generate its IP addresses.  Once an LV
+   subsequently becomes available, the node MAY elect to generate VBAs
+   on its interface, but it MUST track the voucher's state regardless.
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 8]
+
+Internet-Draft                     vba                    September 2024
+
+
+   LV details MAY also be set statically on an interface.  In such
+   cases, the static information MUST contain at least a VoucherID,
+   Voucher Seed, and Algorithm Type specification.  Any interface with
+   static details configured MAY ignore received LVs.  Static LVs MUST
+   always be considered active and preferred; they MUST NOT expire.
+
+3.5.  Link Voucher Acquisitions
+
+   Link Vouchers are REQUIRED to be attached to all RA and Redirect
+   messages by VBs.  Nodes connecting to the link for the first time are
+   REQUIRED to accept and cache the first LV received.  If the
+   connecting node intends to maintain responsibility for the LV as a
+   VB, then it MUST follow the requirements and processes outlined in
+   Section 4.1.  The current LV can be discovered by sending a plain
+   Router Solicitation message, or waiting for a Router Advertisement,
+   per normative SLAAC procedures.  Nodes receiving multiple valid LVs
+   simultaneously SHOULD use the LV with the most recent Timestamp
+   value.
+
+   An active LV expires when no updated LV with the same 'VoucherID' has
+   been received within the amount of seconds specified in the voucher's
+   'Expiration' field.  When an expiration occurs, the node MUST again
+   accept the first received LV.  The 'Expiration' time can also elapse
+   for an interface while it is disconnected from the link.  If such an
+   expiration occurs, then that interface MUST follow the same LV
+   acquisition process.
+
+   Because LV distribution to interfaces requires automatic trust of the
+   VB, it is essential for more adversarial networks to implement some
+   form of protection against distribution of unauthorized LVs at a
+   lower or intermediate level.  See Section 6.2 for more information.
+   In the cases where these protective measures are not available,
+   administrators MAY choose to set LV information on each node
+   statically and MAY wish to enable some variant of intrusion
+   detection.
+
+3.6.  Link Voucher Transitions
+
+   The current Voucher Bearer MAY at any time redelegate its
+   responsibility to another node (see Section 5.2.2).  During the
+   period of transition between the previous LV and the new one, VBA-
+   capable nodes which are subscribed to the LOVMA channel SHOULD
+   receive VHA multicast packets specifying the parameters of the new LV
+   and VB.  These LOVMA-connected interfaces are strongly RECOMMENDED to
+   allow both LVs to be cached, so that VBAs generated using either LV
+   are verifiable.  These interfaces are also strongly RECOMMENDED to
+   begin VBA generation with the new LV's parameters ahead of time.
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                 [Page 9]
+
+Internet-Draft                     vba                    September 2024
+
+
+   Link Voucher transitions MAY also be used in the case of the VB
+   modifying the requirements for VBA generation, such as the Algorithm
+   Type options or the voucher's seed value.
+
+     ==========================================> Time
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+     ...   LV_A Validity        |
+     ~~~|~~~~~|~~~~~X~~~~~~~~~~~Z
+        |     |     +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        |     |     |      LV_B Validity       ...
+        |     |     +~~~~~|~~~~~|~~~~~|~~~~~|~~~~~~~
+     |==|=====|=====|=====|=====|=====|=====|===> Time
+     |  O     O     O     O     O     O     O    ...
+     |              |           |
+     [ LV_A Active  [ Overlap   [ LV_B Active
+    (1)            (2)         (3)
+
+   ** 'X' marks the final advertisement for LV_A.
+       Each 'O' at 'X' until and including 'Z' will
+       include a VHA from the VB of LV_A.
+   ** 'Z' marks the time at [X + LV_A.Expiration].
+   ** 'O' indicates the advertisement of an LV on-link.
+
+     Moments:
+       1   = Link Voucher A is active for all nodes.
+       2   = VHA. LOVMA-subscribed nodes become aware
+              of a transition window. Both LV_A and
+              LV_B are considered active LVs.
+       3   = LV_A expires. Link Voucher B is active for
+              neighbors and the transition completes.
+
+                     Figure 2: Link Voucher Transitions
+
+   If another VHA appears indicating a third LV as appointed for
+   election, receivers MUST ignore the VHA until one of the two LVs from
+   the original VHA has expired.  This prevents abuse which could flag
+   several active LVs as being valid.  Once the transition window ends,
+   the amount of valid LVs MUST return from 2 to 1 before another
+   transition can begin.  The transition ends when the original voucher
+   is intentionally not refreshed within its LV-specified Expiration
+   time.
+
+   The voucher transition provides an opportunity for optimization: if
+   neighbors are aware of the upcoming voucher, then they MAY
+   preemptively generate new VBAs in anticipation of the completed
+   transition.  For neighbors that are not receiving LOVMA datagrams,
+   the voucher transition process is more akin to a hard handoff.  These
+   interfaces will not trust the new voucher until the previous one has
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 10]
+
+Internet-Draft                     vba                    September 2024
+
+
+   expired, at which time any voucher becomes acceptable.  For this
+   reason, any VBAs preemptively generated with the upcoming LV might
+   not be successfully verified by neighbors unaware of the transition,
+   until the window has ended and the new voucher becomes primary.  All
+   implementations SHOULD parse VHAs in order to secure the transition
+   process.
+
+   If the current Voucher Bearer disconnects from the network or lets
+   its voucher expire without an election, then the link becomes open
+   and any neighbor can fill in the voucher void with its own.  If no
+   other VB assumes responsibility while the current VB is away or not
+   transmitting updated vouchers, then all VBA-enabled interfaces MUST
+   retain the most recent, valid voucher for the purposes of VBA
+   generation and verification, until a new voucher becomes available.
+
+3.7.  Duplicate Address Detection
+
+   When generating a VBA, the node MUST follow the ordinary means of
+   Duplicate Address Detection (DAD) specified by the SLAAC RFC (section
+   5.4 of [RFC4862]).  The DAD procedure SHOULD follow any other
+   applicable DAD optimizations ([RFC4429], [RFC7527], etc.).
+
+   Upon detecting a duplicate address during VBA generation, nodes MUST
+   select another work factor 'L' value in order to create a non-
+   conflicting address.  Recomputing each new address for every
+   collision can become computationally expensive, and can be abused in
+   the case of denial-of-service attacks.  To counter this weakness,
+   implementations MUST employ one of two options based on the selected
+   work factor:
+
+   L > 4
+      Cache the results of the 4 leading KDF iterations (L-4 through
+      L-1).
+
+   L <= 4
+      Cache the result of the KDF derived at the 'L' value only.
+
+   Implementations SHOULD always prefer the option where the work factor
+   is greater than 4, because L-4 through L-1 produce intermediate KDF
+   hashes that are already necessary in order to calculate the hash at
+   the final 'L' value.  Conversely, any 'L' value at or under 4 will
+   cache the generated KDF hash at 'L' then increment the input 'L' by
+   one for each DAD collision, up to 4 times.
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 11]
+
+Internet-Draft                     vba                    September 2024
+
+
+   COMPUTE & CACHE:
+     N = Set of K(L', Key, Salt),
+       where L' :=
+         if L > 4 :  { L-4, L-3, L-2, L-1, L },
+         else     :  { L }
+
+              (1)      +~~~~~~~~~~~~~~+
+    |A|{B}------------>| Normal SLAAC | (B :  Duplicate!)
+     |     v-----------|  DAD Process | (B':  Success)
+     |  [FAIL]  (2)    +~~~~~~~~~~~~~~+
+     |                      ^
+     `---> [cached (L-1)    |
+            or new (L+1)    | (3)
+            generates B'] --'
+
+                       Figure 3: Using DAD with VBAs
+
+   In the figure, (1) shows node A engaged in DAD using the address B
+   generated with L.  After a collision is detected in (2), moment (3)
+   shows the new VBA B' being immediately tried using the already-cached
+   hash value from the work factor L-1.  The DAD process is then
+   successful and there are no duplicate addresses.  The cost of
+   computing L-1 or some other input work factor has been avoided.
+
+   If all 5 attempted input work factors result in DAD collisions, then
+   the node MUST give up and use some other course of action to either
+   contact an administrator or log a system management error.
+
+   Protections to mitigate denial-of-service attacks based on DAD are
+   beyond the scope of this document.  However, the cost of the VBA
+   generation procedure is safeguarded from being abused by DAD
+   mechanisms or their misuses.  Since VBAs do not modify the actual DAD
+   process, other works regarding DAD denial of service protections will
+   apply likewise when using VBAs.
+
+4.  The Link Voucher Option
+
+   The Link Voucher (LV) NDP option type describes the VBA generation
+   and verification parameters which neighbors MUST use during the VBA-
+   compliant SLAAC process.
+
+
+
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 12]
+
+Internet-Draft                     vba                    September 2024
+
+
+      0                   1                   2                   3
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |     Type      |    Length     |           Expiration          |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                                                               |
+     |                       Reserved (64 bits)                      |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                                                               |
+     |                        64-bit Timestamp                       |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                        32-bit VoucherID                       |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                                                               |
+     |                                                               |
+     |                      128-bit Voucher Seed                     |
+     |                                                               |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     >                       TLV Algorithm Type                      <
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                                                               |
+     >                          DER-encoded                          <
+     >                     PublicKey & Signature                     <
+     |                                                               |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     >                            Padding                            <
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                Figure 4: Structure of a local Link Voucher
+
+   Type
+      Link Voucher options are identified by Type ID 63
+
+   Length
+      The total length of the LV from the Type through its end,
+      inclusive, in units of 8 octets.
+
+   Reserved
+      Denotes space reserved for future use.  This value MUST be
+      initialized to 0 by senders and MUST be ignored by receivers.
+
+   Expiration
+      A 16-bit big-endian value storing the amount of time in seconds
+      that the LV should be considered legitimate when an update has not
+      been received.  This value SHOULD be a minimum of 600 (10
+      minutes).
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 13]
+
+Internet-Draft                     vba                    September 2024
+
+
+   Timestamp
+      A 64-bit value representing the system time of the sender upon
+      sending the option.
+
+   VoucherID
+      A pseudo-random 32-bit value which uniquely identifies an LV
+      instance.  This MUST NOT change between distributions of the same
+      LV instance and seed value.
+
+   Seed
+      A 128-bit pseudo-random value used as an input in VBA generation.
+      This value MUST be the same for each distribution of an LV
+      instance identified by a VoucherID.  It MUST NOT be the same value
+      across different LV instances.
+
+   Algorithm Type
+      Specifies the type and difficulty of the KDF to use in VBA
+      generation.  See Section 4.3 for more details.
+
+   ECDSA PublicKey & Signature
+      A variable-length field containing a DER-encoded ECDSA [ECDSA]
+      public key of type SubjectPublicKeyInfo according to Section 2 of
+      [RFC5480].
+
+      The public key structure is followed immediately by an adjacent
+      DER-encoded ECDSA signature, derived using the Private Key
+      corresponding to PublicKey.  The signature is computed over a
+      series of sequential octets, constructed in the following order:
+
+      1.  The 16-bit 'Expiration' value.
+      2.  The 64-bit 'Timestamp' value.
+      3.  The 32-bit 'VoucherID' value.
+      4.  The 128-bit 'Seed' value.
+      5.  The full variable-length contents of the 'Algorithm Type'
+          field, including its Type and Length values.
+
+      The algorithm used in signature computation is ecdsa-with-SHA256,
+      as defined in Section 3.2 of [RFC5758].  The Signature MUST be a
+      DER-encoded [ITU.X690.2002] ASN.1 structure of the type ECDSA-Sig-
+      Value (Section 2.2.3 of [RFC3279]).
+
+      The final field appears as the following two immediately adjacent
+      DER structures:
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 14]
+
+Internet-Draft                     vba                    September 2024
+
+
+      SubjectPublicKeyInfo  ::=  SEQUENCE  {
+        algorithm         ::=  SEQUENCE {
+          algorithm   OBJECT IDENTIFIER,
+          parameters  ANY DEFINED BY algorithm OPTIONAL
+        },
+        subjectPublicKey  BIT STRING
+      }
+      ECDSA-Sig-Value  ::=  SEQUENCE  {
+        r  INTEGER,
+        s  INTEGER
+      }
+
+                                   Figure 5
+
+   Padding
+      Any extra padding added to the structure in order to round its
+      total length to an even 8-octet boundary.  Senders MUST initialize
+      this value to 0.  Receivers MUST ignore this field.
+
+4.1.  Processing Rules for Senders
+
+   Current Voucher Bearers MUST always respond to Router Soliciation
+   messages with the most current LV instance.  Nodes wishing to be VBs
+   MUST always follow a sequence of steps before transmitting:
+
+   1.  Send a Router Soliciation to the All Routers multicast group at
+       FF02::2.
+   2.  Wait for an existing voucher for at least 2 seconds before
+       sending another RS.
+   3.  Repeat this process 2 more times.
+       *  If an LV is received within an RA or Redirect response, accept
+          and use the parameters of the received LV.  This condition
+          means the Sender MUST NOT use or send its own vouchers, nor
+          should it propagate any instances of received vouchers.
+       *  If no LV is received after the 3 total attempts, and...
+          -  the Sender IS NOT a router: the Sender's LV option will be
+             distributed on the local link as an option attached to an
+             appropriate NDP Redirect message.
+          -  the Sender IS a router: the Sender will attach its LV
+             option to an appropriate NDP RA message.
+
+   A change of any "stable" voucher information -- i.e., the VoucherID,
+   Seed value, or Algorithm Type details -- MUST be signaled in advance
+   using the voucher transition process, per Section 3.6.  Expiration
+   values MUST be set to an appropriate value.  Senders MAY adjust this
+   value without requiring a transition.
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 15]
+
+Internet-Draft                     vba                    September 2024
+
+
+   The Sender's LV option MUST always be unique and MUST NOT be a
+   forwarded or duplicated copy of another LV.  Additionally, the
+   voucher's Seed value MUST NOT be preserved between different
+   VoucherIDs or handoffs.  It MUST always be a random value when first
+   associated with an LV VoucherID.
+
+4.2.  Processing Rules for Receivers
+
+   An LV option appearing with any message except NDP Router
+   Advertisements or Redirects MUST be discarded and ignored.  Nodes
+   acting as authorized VBs MUST disregard any received LV options on
+   the links for which they are already the active VB.
+
+   Receivers MUST NOT accept vouchers which contain any other public key
+   details or signatures which do not use the same public key as the
+   current VB.  Received vouchers which contain different VBA generation
+   parameters (VoucherID, Seed, Algorithm Type details) MUST be ignored
+   and MUST NOT update any stored voucher state, even if the LV
+   signature is valid.  Likewise, expired vouchers MUST be ignored.
+
+   Vouchers with invalid timestamp values MUST be ignored.  Timestamps
+   MUST be considered invalid if the value falls outside of the range
+   [CURRENT_TIMESTAMP - LV_Expiration] to [CURRENT_TIMESTAMP +
+   LV_Expiration], where CURRENT_TIMESTAMP is the precise 64-bit system
+   time measured by the Receiver.  In cases where the precise system
+   time is measured in sub-second intervals like microseconds, the unit
+   of 'seconds' in the LV_Expiration time still applies and MUST be
+   converted properly for accurate arithmetic with CURRENT_TIMESTAMP.
+   This timestamping process ensures that voucher validity remains
+   flexible even with minor clock drifting between neighbors.
+
+   When a Receiver is subscribed to the LOVMA and is notified of a new
+   voucher transition (by receipt of a valid VHA), it MUST ignore
+   further LV options with the previous LV's VoucherID.  This ensures
+   the VB follows through with its commitment to expire the previous LV
+   once the transition began.
+
+4.3.  The Algorithm Type Field
+
+   This section specifies the default algorithms and KDF types that MUST
+   be packaged with all VBA implementations.  Future versions or
+   extensions of this document MAY add new KDF algorithms corresponding
+   and Type IDs.  Any Algorithm Type option not specified in this
+   document or in future versions MUST be ignored by receivers.
+
+   An Algorithm Type choice is formatted as a Type-Length-Value (TLV)
+   object, where Type is a numeric identifier uniquely representing a
+   KDF, Length is the width of the total Algorithm Type in units of 4
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 16]
+
+Internet-Draft                     vba                    September 2024
+
+
+   octets, and Value is a compact data format zero-padded to the nearest
+   32-bit (4-octet) boundary.  Receivers MUST always ignore padding and
+   Senders MUST always initialize padded areas to 0.
+
+      0                   1                   2                   3
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |              Type             |             Length            |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     >                             Value                             <
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+              Figure 6: Structure of an Algorithm Type Option
+
+   The list of default KDF Algorithm Type Types and their associated
+   parameters is given below.  All fields named "Padding" MUST be
+   initialized to 0 by senders and MUST be ignored by receivers.
+
+   PBKDF2_SHA256
+      The Password-Based Key Derivation Function (PBKDF2) is defined in
+      Section 5.2 of [RFC8018].  It is a CPU-bound KDF, use of which can
+      result in significant computation speed disparities across varying
+      degrees of system resources.  It is included primarily for
+      portability, universality, and ease of implementation.  This
+      document explicitly uses PBKDF2 with SHA-256.  Implementations
+      using this Type MUST use SHA-256 as the underlying PBKDF2 pseudo-
+      random function.
+
+      Type
+         1
+      Length
+         2
+      Value
+         ITERATIONS_FACTOR
+            A big-endian, 16-bit, unsigned integer as the multiplier of
+            the selected work factor 'L'.  This value MUST be greater
+            than 0; receivers of 0 values MUST assume 1 instead.
+         Padding (16 bits)
+
+   Argon2d
+
+
+
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 17]
+
+Internet-Draft                     vba                    September 2024
+
+
+      The Argon2 algorithm is specified in Section 3 of [RFC9106].  It
+      is a Memory-bound KDF which will ideally provide less disparate
+      address computation speeds than CPU-bound algorithms like PBKDF2.
+      Note that VBA explicitly opts to use Argon2d, rather than Argon2i
+      or Argon2id.  The work factor 'L' value is used as the 't' input
+      for Argon2d computations.  The Argon2 't' parameter indicates the
+      number of passes and is used to increase the algorithm's running
+      time regardless of MemorySize.  To give the LV parameters in the
+      Value field more weight, 't' MUST always be reduced from the input
+      'L' value as follows:
+
+      t := (L >> 8) + 1
+
+      The Argon2 parameters for Secret Value 'K' and Associated Data 'X'
+      MUST NOT be used.  The Tag Length 'T' for Argon2d MUST be set to
+      32 and MUST NOT vary.
+
+      Type
+         10
+      Length
+         2
+      Value
+         Parallelism
+            An 8-bit, unsigned integer specifying how many degrees of
+            parallelism (lanes) are allowed to run during KDF
+            computation.  This value SHALL NOT be set to 0.  Receivers
+            MUST consider values of 0 to automatically indicate a value
+            of 1.
+         MemorySize
+            A big-endian, 24-bit, unsigned integer dictating the number
+            of kibibytes (KiB) used in the KDF computation.  This value
+            MUST be a minimum of 8 * Parallelism and MUST NOT be set to
+            0.  Receivers MUST adjust the minimum MemorySize accordingly
+            if the value does not meet the minimum threshold for the
+            specified Parallelism value.
+
+   Scrypt
+      The Scrypt KDF algorithm is specified in Section 6 of [RFC7914].
+      It is also a Memory-bound KDF.  The work factor 'L' value is used
+      in parts of the 'N', 'r', and 'p' inputs for Scrypt computations,
+      as opposed to being used more linearly.  Input KDF parameters are
+      set by the following conversions:
+
+      *  N (Cost) := MAX(1 << (MIN(11, MAX(1, ((L & 0xFF00) >> 8) /
+         24))), 2) << SCALING_FACTOR
+
+      *  p (Parallelization) := MAX( 1, (L & 0x00F0) )
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 18]
+
+Internet-Draft                     vba                    September 2024
+
+
+      *  r (BlockSize) := MAX{ 1, (L & 0x000F) )
+
+      The Scrypt parameter 'dkLen' (derived key length) MUST always be
+      set to 32 and MUST NOT vary.
+
+      Type
+         20
+      Length
+         2
+      Value
+         SCALING_FACTOR
+            An 8-bit integer controlling the difficulty scaling of the
+            Scrypt algorithm.  This value MUST only be 0 through 5
+            inclusive.  Receivers MUST adjust the maximum value to 5 if
+            the received value is greater than 5.
+         Padding (24 bits)
+
+5.  Local On-link Voucher Multicast Address
+
+   The LOVMA group is introduced to convey voucher-related updated
+   between neighbors.  All VBA-capable neighbors are strongly
+   RECOMMENDED to join this group.  However, current link VBs are always
+   REQUIRED to join the LOVMA channel.
+
+   This multicast group is located at the IP address FF02::ABBA.  A
+   helpful mnemonic to remember this address is to think of ABBA as a
+   hexademical rendition of "a VBA".  The designated UDP port on which
+   all LOVMA data is sent and received is 2196.
+
+5.1.  Constraints
+
+   Nodes MUST regard these constraints when interacting with the LOVMA
+   channel:
+
+   *  LOVMA messages are considered unidirectional.  Neighbors MUST NOT
+      send unicast responses in reply to multicast traffic.
+
+   *  LOVMA messages MUST be User Datagram Protocol (UDP) [RFC768]
+      datagrams.
+
+   *  Subscribing nodes MUST NOT assume that any other VBA-capable nodes
+      are subscribed to the LOVMA group for any reason.  However,
+      neighbors MAY assume the presence of the current link VB on the
+      LOVMA.
+
+   *  Subscribing nodes MUST NOT offer unconditional trust of LOVMA
+      messages.  Each message type may specify its own method of
+      establishing trust for its recipients.
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 19]
+
+Internet-Draft                     vba                    September 2024
+
+
+   *  Senders are REQUIRED to send messages from a link-local VBA bound
+      to the sending interface.
+
+5.2.  Message Types
+
+   All LOVMA datagrams MUST use a Type-Length-Value (TLV) format.  Type
+   is an 8-bit integer identifying the datagram type, Length is an 8-bit
+   integer specifying the length of the packet (including the Type and
+   Length fields) in units of 4 octets, and Value is the data to be
+   handled.
+
+   The Type and Length fields MUST NOT be set to 0.  Receivers MUST
+   ignore datagrams with a Type of 0 or a Length of 0.
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      Type     |     Length    |             Value             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+              ...              |
+   >                              ...                              <
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                   Figure 7: Structure of LOVMA Datagrams
+
+5.2.1.  Voucher Capability Indications (VCIs)
+
+   A node MAY notify the LOVMA channel about its potential candidacy as
+   a Voucher Bearer by sending a VCI datagram.  The VCI is an
+   informational datagram REQUIRED for consideration of election by the
+   current VB.  An "election" means the VB will transfer ownership of
+   the active LV to the candidate.  Neighbors MUST NOT consider VCI
+   packets as valid vouchers.  The VB MAY maintain a state of unexpired
+   VCI messages, especially when it intends to appoint a new neighbor as
+   a successor VB.  VBs MUST NOT elect a new VB without first receiving
+   a VCI datagram indicating the Sender's readiness.
+
+   Sending nodes MUST NOT assume that issuance of a VCI packet is a
+   guaranteed appointment as the VB.  The decision for election MUST be
+   indicated by receipt of a signed VHA datagram from the VB, whose
+   signature's public key matches that of the current, active LV.
+
+
+
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 20]
+
+Internet-Draft                     vba                    September 2024
+
+
+      0                   1                   2                   3
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |      Type     |     Length    |                               |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+     |                            Reserved                           |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     >                      Link Voucher Contents                    <
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                   Figure 8: Structure of a VCI Datagram
+
+   Type
+      1
+
+   Length
+      Variable.  The datagram length rounded up to the nearest 4 octets.
+
+   Reserved
+      Space reserved for future use.
+
+   Link Voucher Contents
+      The entirety of the candidate ND Link Voucher option to be
+      attached to future RAs or Redirects.  This MUST also include the
+      LV's Type and Length fields.  Validation of this field follows the
+      same rules outlined by Section 4.  Receivers MUST NOT expect the
+      signature or public key of the LV to be the same as that of the
+      current LV.  Receivers MUST ignore the entire datagram if
+      validation of the embedded LV fails for any reason, including
+      invalid cryptographic signatures, null IDs, et al.
+
+5.2.2.  Voucher Handoff Advertisements (VHAs)
+
+   The VB MAY elect a new VB using the VHA message.  This communication
+   notifies subscribing VBA-capable nodes of a upcoming change in the
+   active LV and possibly the VB of the LV.  Candidates from election
+   MUST be gathered from either manual sources or from senders of recent
+   VCI datagrams.  If the signature on the VHA is valid, listening nodes
+   MUST accept the start of the handoff process whereby both VoucherID
+   fields become temporarily valid.  If the message signature field is
+   not verifiable using the current VB's public key, then receivers MUST
+   ignore the datagram.  If there is no current LV and a VHA is
+   received, then it MUST be ignored.
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 21]
+
+Internet-Draft                     vba                    September 2024
+
+
+   The transition window duration is based on the 'Expiration' value of
+   the current VB's LV at the time the VHA is sent.  VHA retransmission
+   frequency is variable but is RECOMMENDED to follow the same frequency
+   as the node's previous RA or Redirect issuances.  VBs initiating a
+   transition MUST send at least one VHA notification every 5 seconds
+   for a minimum of 3 minutes.
+
+   When the elected node becomes aware of its upcoming appointment, it
+   MUST begin sending RAs or Redirects with its LV attached.  Sending
+   these messages will always echo the receipt of a valid, unexpired VHA
+   from the appointing VB.  After 2 minutes, the new VB MUST consider
+   LVs of the previous VB as invalid, and therefore MUST NOT trigger any
+   more voucher advertisements driven by receipt of VHAs.
+
+   VHAs MUST also be used to indicate a change in active voucher details
+   by using the 'Refresh' bit.  This indicates a transition between LV
+   parameters from the same VB rather than a change of the responsible
+   VB.  Using the VHA for this purpose affords neighbors enough time to
+   fully transition interface VBAs between varying voucher details, like
+   in ordinary elections.
+
+      0                   1                   2                   3
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |      Type     |     Length    |R|          Reserved           |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                                                               |
+     |                        64-bit Timestamp                       |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                    32-bit Signer VoucherID                    |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                   32-bit Upcoming VoucherID                   |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     >                                                               <
+     >                     DER-encoded Signature                     <
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     >                            Padding                            <
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                   Figure 9: Structure of a VHA Datagram
+
+   Type
+      2
+
+   Length
+      Variable.  The datagram length rounded up to the nearest 4 octets.
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 22]
+
+Internet-Draft                     vba                    September 2024
+
+
+   R (Refresh Bit)
+      A single bit.  When set, it indicates that the transition is only
+      an LV refresh and is not a change of the VB.
+
+   Reserved
+      15 bits of space reserved for future use.
+
+   Timestamp
+      The current precise system time encoded as a 64-bit value.
+
+      Timestamps MUST be considered invalid if the value is outside the
+      range [CURRENT_TIMESTAMP - 120] to [CURRENT_TIMESTAMP + 120],
+      where CURRENT_TIMESTAMP is the precise 64-bit system time measured
+      by the receiving node and 120 is in units of seconds.  If the
+      CURRENT_TIMESTAMP is measured in sub-second units like
+      microseconds, then the 120 value MUST be converted appropriately.
+
+   Signer VoucherID
+      The VoucherID of the VB's active LV.  Nodes using this ID for
+      their active LV MUST disregard any further advertised LVs with
+      this value upon receiving a valid VHA datagram.  A receiver MUST
+      ignore this packet if the Signer VoucherID is not equal to that of
+      the active LV.
+
+   Upcoming VoucherID
+      The VoucherID of the new LV which is being appointed.
+
+   ECDSA Signature
+      A variable-length field containing a DER-encoded ECDSA [ECDSA]
+      signature, derived using the private key of the VB corresponding
+      to the Signer VoucherID.  The value of the public key is implied
+      and expected to be known by receivers.  The signature is computed
+      over a series of sequential octets constructed in the following
+      order:
+
+      1.  The 64-bit 'Timestamp' value.
+      2.  The 32-bit 'Signer VoucherID' value.
+      3.  The 32-bit 'Upcoming VoucherID' value.
+
+      The algorithm used in signature computation is ecdsa-with-SHA256,
+      as defined in Section 3.2 of [RFC5758].  This field MUST be a DER-
+      encoded [ITU.X690.2002] ASN.1 structure of the type ECDSA-Sig-
+      Value (Section 2.2.3 of [RFC3279]).
+
+   Padding
+      Padding necessary to round the message size up to the nearest
+      4-octet boundary.
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 23]
+
+Internet-Draft                     vba                    September 2024
+
+
+6.  Security Considerations
+
+   This section covers VBA security topics which may not have had
+   adequate exploration in the rest of the document.
+
+6.1.  Collision Resistance & Time-Memory Tradeoffs
+
+   VBA generation only preserves 48 bits from a resultant hash.  While a
+   collision is unlikely, nodes treat this as they do the DAD process:
+   even if it is unlikely, it is a possibility and must be handled
+   appropriately.  Potential hash collisions are a weakness of VBA
+   verification because LLID binding is done through a deterministic
+   hashing process and nothing else.  In other words, any other
+   spoofable LLID producing the same 48-bit 'H' portion of the VBA
+   suffix will result in an equally valid VBA according to the
+   verification procedure.
+
+   KDFs are used for VBA generation for the added purpose of slowing
+   collision discoveries.  The tradeoff of requiring slightly more time
+   for address computation in order to protect against brute-force
+   collision enumeration is a strategy also recommended for use in
+   password storage systems to protect user secrets (see [SP.800-132]).
+   To prevent any possible time-memory tradeoff attacks, the voucher is
+   rotated semi-regularly to maintain an ever-moving 128-bit salt value,
+   so VBAs can never be pared down to a simple dictionary attack.
+
+   An attacker searching for inputs that produce a colliding address is
+   therefore subjected to the misery of enumerating many different LLIDs
+   in order to generate a VBA that matches the target's 48-bit hash
+   suffix.  This resultant VBA must also embed the same work factor as
+   its target because it is an explicit part of the VBA itself.  If the
+   target IP address contains a high work factor value, then this brute-
+   force process will be even slower and more unlikely to succeed.  All
+   the while, collision-producing inputs must be obtained before the
+   rotation of the curremt voucher, which will reset the attacker's
+   marathon entirely.
+
+   For example, 1-millisecond VBA generation times for the most
+   resource-rich neighbors equates to attempting only 1,000 spoofed
+   LLIDs per second (3,600,000 LLIDs per hour).  If the LLID in this
+   case were an IEEE 802 MAC address, then 3.6M attempted MAC addresses
+   is equivalent to only about a millionth of a percent of all possible
+   addresses (2^48 when not accounting for reserved MAC address ranges).
+   At the same time, a 1-millisecond delay to verify the LLID as a
+   legitimate binding to a given VBA is a very negligible amount of
+   time.
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 24]
+
+Internet-Draft                     vba                    September 2024
+
+
+6.2.  Employing RA-Guard
+
+   RA-Guard is an important addition to the voucher distribution system.
+   An excerpt from the RA-Guard RFC is noted:
+
+   |  [RFC6105] describes a solution framework for the rogue-RA problem
+   |  [RFC6104] where network segments are designed around a single
+   |  L2-switching device or a set of L2-switching devices capable of
+   |  identifying invalid RAs and blocking them.
+
+   Use of RA-Guard is primarily suggested for networks with a more
+   adversarial security posture.  The RA-Guard system SHOULD be
+   augmented and deployed with VBA awareness, capable of tracking the
+   state of LVs and LOVMA messages.  This will allow an intermediate
+   network device to only require RA-Guard Learning Mode for a short
+   initial period.  It can then subsequently "follow" the authorized LV
+   around the link, blocking any other malicious or spurious LV option
+   transmissions that do not make sense.  This would mean the system
+   should monitor all Router Advertisement and Redirect NDP messages and
+   their attached options.
+
+   One notable exception to this, however, is that an RA-Guard
+   implementation MAY drop its protections if and only if the most
+   recent and legitimate LV has expired without a successor.  This is
+   because some responsible VB needs to be free to supersede an expired
+   LV.
+
+6.3.  Hijacking or Desynchronizing Link Vouchers
+
+   Hijacking the VB role can be achieved by a few different means.
+   Without RA-Guard, false VBs are free to constantly advertise their
+   own vouchers onto the network.  For neighbors already having an
+   active voucher, this is only a problem if VHAs in the LOVMA are not
+   being used and the current LV expires.  For neighbors joining the
+   network for the first time, there is a timing opportunity for
+   attackers to "lock them in" before the legitimate VB can advertise.
+
+   If a legitimate VB goes offline and is not able to transmit any
+   updated vouchers to the network, then its current voucher can expire.
+   When a voucher expires, VBA requires nodes to acquire the next
+   available voucher.  If a malicious neighbor uses denial-of-service
+   attacks to force a VB offline for long enough, then it can force an
+   expiration of the current voucher and gain control of it.
+
+   There are numerous threat vectors available to wannabe malicious VBs:
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 25]
+
+Internet-Draft                     vba                    September 2024
+
+
+   *  Denial of service attacks could result from setting LV parameters
+      to an excessive difficulty.  By asking local nodes to verify and
+      generate VBAs according to absurd KDF options, ridiculous amounts
+      of computing resources could be consumed and wasted.  This could
+      potentially consume enough resources on targets to temporarily
+      force them offline.
+
+   *  Having multiple vouchers on the same link will inevitably lead to
+      different logical subnetworks, where nodes using one voucher are
+      generating and verifying addresses according to a different set of
+      parameters than another.  If verifications are being used to
+      verify neighbor identities, then this could potentially stop
+      communications between neighbors entirely.
+
+   *  If the difficulty of address generation is set to its absolute
+      minimum, then bindings are cheapened for neighbors that use low
+      work factor values because collisions would become easy to
+      calculate.
+
+6.4.  Voucher Rotation Intervals
+
+   Short voucher Expiration values are disallowed in LV options because
+   of possible time synchronization issues between neighbors and to
+   prevent an 'address generation storm'.  This mechanism intends to
+   prevent malicious VBs from over-rotating the current voucher and
+   exhausting resources of neighbors who will be very busy trying to
+   keep up with address generation.  Employing long 'Expiration' windows
+   also allows the VB to "go away" or disconnect for a longer period of
+   time without dropping the current voucher.
+
+   Likewise, excessive durations for Expirations SHOULD be limited in
+   more adversarial networks in order to prevent threat actors from
+   discovering address collisions which they could use to make some VBA
+   verifications useless.  A happy medium will ensure a plentiful pool
+   of addresses for each neighbor, while also not letting it get
+   stagnant.
+
+7.  IANA Considerations
+
+   This document defines a new Neighbor Discovery Protocol option type
+   and one new link-local multicast address.  The introduced Link
+   Voucher option type contains another set of Type-Length-Value (TLV)
+   packet options.  The multicast address also uses other assigned TLV
+   packets to convey important (but optional) protocol information.
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 26]
+
+Internet-Draft                     vba                    September 2024
+
+
+   One new Neighbor Discovery Protocol option is defined in this
+   document and must have a new Option Type value assigned in the "IPv6
+   Neighbor Discovery Option Formats" subregistry of the "Internet
+   Control Message Protocol version 6 (ICMPv6) Parameters" registry.
+
+   *  The Link Voucher option (63), described in Section 4.
+
+   The Link Voucher option includes a new option type used to convey KDF
+   algorithm selections.  Assigned in the "Algorithm Type Options"
+   subregistry are string identifiers corresponding to integers which
+   indicate their Algorithm Type values.  Future values MUST be assigned
+   according to the Standards Action policy of [RFC8126].  Default
+   registrations are defined in this document:
+
+                      +======+======================+
+                      | Type | Name/Identifier      |
+                      +======+======================+
+                      | 1    | VBAKDF_PBKDF2_SHA256 |
+                      +------+----------------------+
+                      | 10   | VBAKDF_ARGON2D       |
+                      +------+----------------------+
+                      | 20   | VBAKDF_SCRYPT        |
+                      +------+----------------------+
+
+                         Table 1: Initial Values of
+                            the "Algorithm Type
+                            Options" Subregistry
+
+   See Section 5 for information about the Local On-link Voucher
+   Multicast Address subscribed to by VBA-enabled network interfaces.
+   This section will also contain specific packet formats.
+
+   Assigned in the "Link-Local Scope Multicast Addresses" subregistry of
+   the "IPv6 Multicast Address Space Registry":
+
+   |  Address(es): FF02::ABBA Description: Local On-link Voucher
+   |  Multicast Address Reference: draft-puhl-6man-vba-00
+
+   The well-known UDP port 2196 is used for multicast traffic on the
+   LOVMA channel.  Assigned in the "Service Name and Transport Protocol
+   Port Number Registry":
+
+   |  Service Name: vba_lovma Port Number: 2196 Transport Protocol: UDP
+   |  Description: IPv6 Voucher-Based Addressing multicast updates
+   |  Reference: draft-puhl-6man-vba-00
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 27]
+
+Internet-Draft                     vba                    September 2024
+
+
+   A set of three TLV packet types used specifically in the new LOVMA
+   channel are defined in this document.  Assigned in the "LOVMA Message
+   Types and Options" subregistry of the "Voucher-Based Addressing (VBA)
+   Parameters" registry.
+
+   The values in the "LOVMA Message Types and Options" subregistry are
+   string identifiers corresponding to integers which indicate their
+   packet Type values.  Future values MUST be assigned according to the
+   Standards Action policy of [RFC8126].  Default registrations are
+   defined in this document:
+
+                +======+=================+===============+
+                | Type | Name/Identifier | Reference     |
+                +======+=================+===============+
+                | 1    | LOVMA_VCI       | Section 5.2.1 |
+                +------+-----------------+---------------+
+                | 2    | LOVMA_VHA       | Section 5.2.2 |
+                +------+-----------------+---------------+
+
+                  Table 2: Initial Values of the "LOVMA
+                  Message Types and Options" Subregistry
+
+8.  Future Work
+
+   This section provides an overview of related topics that might be
+   explored in future work.
+
+8.1.  Deployments using DHCP
+
+   Future work might wish to add features into DHCP servers that support
+   delegating VBAs by using something like DHCP Snooping to ensure that
+   only legitimate servers are assigning addresses.  Because of its
+   centrality and responsibility, a DHCP server would also be well-
+   suited as the VB, especially if no connected router supports VBA.
+
+   One notable change of generating VBAs server-side is the removal of
+   client-side work factor selections.  Allowing nodes to choose their
+   own work factor values affords them the ability to randomize it
+   according to their whims or retain a preferred work factor value.  In
+   a future proposal, DHCP client options could be amended to allow
+   clients to request a work factor value, along with providing other
+   important details to the server.
+
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 28]
+
+Internet-Draft                     vba                    September 2024
+
+
+8.2.  Certifying Link Vouchers
+
+   Future additions to this document could investigate the feasibility
+   of PKI and certificates for signatures appearing on LV messages.
+   This could include amendments to the LV structure which would extend
+   the fields to convey trust anchor or certification path information.
+   While VBA generally seeks to avoid the complexities introduced by
+   PKI, it is perhaps a necessity for first-contact trust wherever RA-
+   Guard or similar protections cannot be used.  This is still a very
+   performant use of certification paths since the certificate details
+   are only verified during LV parsing when initially received.
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC4861]  Narten, T., Nordmark, E., Simpson, W., and H. Soliman,
+              "Neighbor Discovery for IP version 6 (IPv6)", RFC 4861,
+              DOI 10.17487/RFC4861, September 2007,
+              <https://www.rfc-editor.org/info/rfc4861>.
+
+   [RFC4862]  Thomson, S., Narten, T., and T. Jinmei, "IPv6 Stateless
+              Address Autoconfiguration", RFC 4862,
+              DOI 10.17487/RFC4862, September 2007,
+              <https://www.rfc-editor.org/info/rfc4862>.
+
+9.2.  Informative References
+
+   [RFC8018]  Moriarty, K., Ed., Kaliski, B., and A. Rusch, "PKCS #5:
+              Password-Based Cryptography Specification Version 2.1",
+              RFC 8018, DOI 10.17487/RFC8018, January 2017,
+              <https://www.rfc-editor.org/info/rfc8018>.
+
+   [RFC9106]  Biryukov, A., Dinu, D., Khovratovich, D., and S.
+              Josefsson, "Argon2 Memory-Hard Function for Password
+              Hashing and Proof-of-Work Applications", RFC 9106,
+              DOI 10.17487/RFC9106, September 2021,
+              <https://www.rfc-editor.org/info/rfc9106>.
+
+   [RFC7914]  Percival, C. and S. Josefsson, "The scrypt Password-Based
+              Key Derivation Function", RFC 7914, DOI 10.17487/RFC7914,
+              August 2016, <https://www.rfc-editor.org/info/rfc7914>.
+
+   [RFC4291]  Hinden, R. and S. Deering, "IP Version 6 Addressing
+              Architecture", RFC 4291, DOI 10.17487/RFC4291, February
+              2006, <https://www.rfc-editor.org/info/rfc4291>.
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 29]
+
+Internet-Draft                     vba                    September 2024
+
+
+   [RFC7217]  Gont, F., "A Method for Generating Semantically Opaque
+              Interface Identifiers with IPv6 Stateless Address
+              Autoconfiguration (SLAAC)", RFC 7217,
+              DOI 10.17487/RFC7217, April 2014,
+              <https://www.rfc-editor.org/info/rfc7217>.
+
+   [RFC7721]  Cooper, A., Gont, F., and D. Thaler, "Security and Privacy
+              Considerations for IPv6 Address Generation Mechanisms",
+              RFC 7721, DOI 10.17487/RFC7721, March 2016,
+              <https://www.rfc-editor.org/info/rfc7721>.
+
+   [RFC8064]  Gont, F., Cooper, A., Thaler, D., and W. Liu,
+              "Recommendation on Stable IPv6 Interface Identifiers",
+              RFC 8064, DOI 10.17487/RFC8064, February 2017,
+              <https://www.rfc-editor.org/info/rfc8064>.
+
+   [RFC8981]  Gont, F., Krishnan, S., Narten, T., and R. Draves,
+              "Temporary Address Extensions for Stateless Address
+              Autoconfiguration in IPv6", RFC 8981,
+              DOI 10.17487/RFC8981, February 2021,
+              <https://www.rfc-editor.org/info/rfc8981>.
+
+   [RFC6104]  Chown, T. and S. Venaas, "Rogue IPv6 Router Advertisement
+              Problem Statement", RFC 6104, DOI 10.17487/RFC6104,
+              February 2011, <https://www.rfc-editor.org/info/rfc6104>.
+
+   [RFC6105]  Levy-Abegnoli, E., Van de Velde, G., Popoviciu, C., and J.
+              Mohacsi, "IPv6 Router Advertisement Guard", RFC 6105,
+              DOI 10.17487/RFC6105, February 2011,
+              <https://www.rfc-editor.org/info/rfc6105>.
+
+   [RFC4429]  Moore, N., "Optimistic Duplicate Address Detection (DAD)
+              for IPv6", RFC 4429, DOI 10.17487/RFC4429, April 2006,
+              <https://www.rfc-editor.org/info/rfc4429>.
+
+   [RFC7527]  Asati, R., Singh, H., Beebee, W., Pignataro, C., Dart, E.,
+              and W. George, "Enhanced Duplicate Address Detection",
+              RFC 7527, DOI 10.17487/RFC7527, April 2015,
+              <https://www.rfc-editor.org/info/rfc7527>.
+
+   [RFC5758]  Dang, Q., Santesson, S., Moriarty, K., Brown, D., and T.
+              Polk, "Internet X.509 Public Key Infrastructure:
+              Additional Algorithms and Identifiers for DSA and ECDSA",
+              RFC 5758, DOI 10.17487/RFC5758, January 2010,
+              <https://www.rfc-editor.org/info/rfc5758>.
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 30]
+
+Internet-Draft                     vba                    September 2024
+
+
+   [RFC768]   Postel, J., "User Datagram Protocol", STD 6, RFC 768,
+              DOI 10.17487/RFC0768, August 1980,
+              <https://www.rfc-editor.org/info/rfc768>.
+
+   [RFC3279]  Bassham, L., Polk, W., and R. Housley, "Algorithms and
+              Identifiers for the Internet X.509 Public Key
+              Infrastructure Certificate and Certificate Revocation List
+              (CRL) Profile", RFC 3279, DOI 10.17487/RFC3279, April
+              2002, <https://www.rfc-editor.org/info/rfc3279>.
+
+   [RFC5480]  Turner, S., Brown, D., Yiu, K., Housley, R., and T. Polk,
+              "Elliptic Curve Cryptography Subject Public Key
+              Information", RFC 5480, DOI 10.17487/RFC5480, March 2009,
+              <https://www.rfc-editor.org/info/rfc5480>.
+
+   [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
+              Writing an IANA Considerations Section in RFCs", BCP 26,
+              RFC 8126, DOI 10.17487/RFC8126, June 2017,
+              <https://www.rfc-editor.org/info/rfc8126>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [ITU.X690.2002]
+              International Telecommunications Union, "Information
+              Technology - ASN.1 encoding rules: Specification of Basic
+              Encoding Rules (BER), Canonical Encoding Rules (CER), and
+              Distinguished Encoding Rules (DER)",
+              <https://www.itu.int/rec/T-REC-X.690>.
+
+   [ECDSA]    Johnson, D., Menezes, A., and S. Vanstone, "The Elliptic
+              Curve Digital Signature Algorithm (ECDSA)",
+              DOI 10.1007/s102070100002, August 2001,
+              <https://doi.org/10.1007/s102070100002>.
+
+   [SP.800-132]
+              National Institute of Standards and Technology,
+              "Recommendation for Password-Based Key Derviation, Part 1:
+              Storage Applications", DOI 10.6028/NIST.SP.800-132,
+              December 2010, <https://doi.org/10.6028/NIST.SP.800-132>.
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 31]
+
+Internet-Draft                     vba                    September 2024
+
+
+Appendix A.  Code Snippets
+
+   Source code demonstrating the VBA address generation and verification
+   procedures, with assumed Neighbor Discovery Protocol support, can be
+   found at https://github.com/NotsoanoNimus/voucher-based-addressing.
+
+Acknowledgements
+
+   The author would like to thank Dr. Jinhua Guo of the University of
+   Michigan for his valuable, constructive feedback and support of this
+   work.
+
+Authors' Addresses
+
+   Zack Puhl
+   University of Michigan
+   Detroit, Michigan
+   United States of America
+   Email: zpuhl@xmit.xyz, zpuhl@umich.edu
+   URI:   https://xmit.xyz/
+
+
+   Jeremy Duncan
+   Tachyon Dynamics
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Puhl & Duncan             Expires 28 March 2025                [Page 32]
